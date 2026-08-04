@@ -119,7 +119,9 @@
 <script>
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
-  const HORARIOS_ESTANDAR = ['10:00', '16:00', '18:30', '19:30'];
+  
+  // Horarios de Mañana (09:00 a 13:00) y Tarde (17:00 a 20:00)
+  const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '17:00', '18:00', '19:00'];
 
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
