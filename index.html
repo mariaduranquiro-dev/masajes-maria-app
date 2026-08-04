@@ -4,14 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>María Durán - Quiromasajista | Reserva de Citas</title>
+
+  <!-- Configuración PWA / App Instalable -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0B1E36">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="María Durán">
+  <link rel="apple-touch-icon" href="logo.jpg">
+
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', sans-serif; }
     body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px 10px; display: flex; justify-content: center; }
     .app-container { max-width: 420px; width: 100%; background: #FFFFFF; border-radius: 20px; padding: 20px; border: 1px solid #E2DBCF; box-shadow: 0 4px 15px rgba(11, 30, 54, 0.08); position: relative; }
+    
     .header { text-align: center; border-bottom: 1px solid #E2DBCF; padding-bottom: 12px; margin-bottom: 16px; }
-    .logo-title { font-size: 22px; font-weight: bold; letter-spacing: 3px; color: #0B1E36; margin: 0; }
-    .logo-subtitle { font-size: 10px; color: #B89047; letter-spacing: 4px; margin-top: 4px; font-weight: bold; }
+    .header-logo-img { max-width: 180px; width: 100%; height: auto; border-radius: 8px; }
+    
     .section-title { font-size: 13px; font-weight: bold; color: #0B1E36; margin: 16px 0 8px 0; text-transform: uppercase; letter-spacing: 1px; }
     
     .card-option { background: #FFFFFF; border: 1.5px solid #E2DBCF; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; user-select: none; }
@@ -42,8 +53,7 @@
 
 <div class="app-container">
   <div class="header">
-    <h1 class="logo-title">MARÍA DURÁN</h1>
-    <div class="logo-subtitle">— QUIROMASAJISTA —</div>
+    <img src="logo.jpg" alt="María Durán - Quiromasajista" class="header-logo-img" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/3063/3063822.png';">
   </div>
 
   <form id="booking-form">
@@ -120,7 +130,6 @@
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   
-  // Horarios de Mañana (09:00 a 13:00) y Tarde (17:00 a 20:00)
   const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
 
   function selectService(element, id) {
@@ -143,7 +152,6 @@
     const container = document.getElementById('time-slots');
     if (!fechaVal) return;
 
-    // CONTROL FINES DE SEMANA (Sábado = 6, Domingo = 0)
     const fechaObj = new Date(fechaVal + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
 
@@ -160,11 +168,9 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // 1. Consultar citas ocupadas
       const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
       if (citas) horasOcupadas = citas.map(c => c.hora.substring(0, 5));
 
-      // 2. Consultar bloqueos manuales de María
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').eq('fecha', fechaVal);
       if (bloqueos && bloqueos.length > 0) {
         bloqueos.forEach(b => {
