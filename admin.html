@@ -128,7 +128,7 @@
         <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
       </div>
 
-      <!-- RECUADRO DE BLOQUEO MANUAL CON LAS NUEVAS HORAS -->
+      <!-- RECUADRO DE BLOQUEO MANUAL CON TODAS LAS HORAS -->
       <div class="block-manager-box">
         <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
         <form id="form-bloqueo" onsubmit="guardarBloqueo(event)" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:center;">
@@ -139,9 +139,11 @@
             <option value="10:00">10:00 h</option>
             <option value="11:00">11:00 h</option>
             <option value="12:00">12:00 h</option>
+            <option value="13:00">13:00 h</option>
             <option value="17:00">17:00 h</option>
             <option value="18:00">18:00 h</option>
             <option value="19:00">19:00 h</option>
+            <option value="20:00">20:00 h</option>
           </select>
           <input type="text" id="blk_motivo" placeholder="Motivo (Ej. Médico)" style="margin:0; padding:6px; font-size:12px;">
           <button type="submit" class="btn btn-gold" style="padding:7px 12px; font-size:11px;">+ Bloquear</button>
