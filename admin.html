@@ -144,11 +144,12 @@
         </div>
       </div>
 
+      <!-- Leyenda de Colores (Actualizada) -->
       <div class="legend-box">
         <strong>Leyenda de colores:</strong> &nbsp;<br>
         <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
         <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente / Instagram</span>
+        <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
       </div>
     </div>
 
@@ -219,7 +220,7 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Confirmación de Anulación (Integrada dentro de la web) -->
+  <!-- MODAL 2: Confirmación de Anulación -->
   <div class="modal" id="modal-confirmar-anulacion">
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
@@ -262,6 +263,20 @@
         <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px;">Guardar Cita</button>
         <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ccc;" onclick="cerrarModalManual()">Cancelar</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Confirmación Éxito Cita Manual (Integrado) -->
+  <div class="modal" id="modal-notificacion-exito">
+    <div class="modal-content" style="text-align: center;">
+      <div style="font-size: 42px; color: #1e8e3e; margin-bottom: 4px;">✓</div>
+      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center;">¡Cita añadida con éxito!</div>
+      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px;">
+        La cita manual se ha registrado correctamente en la agenda.
+      </p>
+      <button class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;" onclick="cerrarModalExito()">
+        Aceptar
+      </button>
     </div>
   </div>
 
@@ -382,7 +397,7 @@
     cargarAgendaSemanal();
   }
 
-  // Confirmación Anulación Integrada
+  // Confirmación Anulación
   function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
     document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.<br><br>Esta acción eliminará el registro de la agenda.`;
@@ -408,7 +423,9 @@
 
   function abrirModalManual() { document.getElementById('modal-cita').style.display = 'flex'; }
   function cerrarModalManual() { document.getElementById('modal-cita').style.display = 'none'; }
+  function cerrarModalExito() { document.getElementById('modal-notificacion-exito').style.display = 'none'; }
 
+  // Submit Cita Manual (Con Notificación Integrada)
   document.getElementById('form-manual').addEventListener('submit', async function(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -423,9 +440,14 @@
       estado: 'pendiente'
     };
 
-    await supabase.from('citas').insert([nueva]);
-    cerrarModalManual();
-    cargarAgendaSemanal();
+    const { error } = await supabase.from('citas').insert([nueva]);
+
+    if (!error) {
+      document.getElementById('form-manual').reset();
+      cerrarModalManual();
+      document.getElementById('modal-notificacion-exito').style.display = 'flex';
+      cargarAgendaSemanal();
+    }
   });
 
   window.onload = cargarAgendaSemanal;
