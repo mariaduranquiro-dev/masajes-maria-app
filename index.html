@@ -28,28 +28,27 @@
       border: 1px solid #E2DBCF; 
       box-shadow: 0 4px 15px rgba(11, 30, 54, 0.08); 
       position: relative;
-      overflow: hidden; /* Asegura que la marca de agua no se salga de los bordes redondeados */
+      overflow: hidden;
     }
 
-    /* EFECTO MARCA DE AGUA DIFUMINADA EN EL FONDO */
+    /* EFECTO MARCA DE AGUA DIFUMINADA CENTRADA EN 'DÍA Y HORA' */
     .app-container::before {
       content: "";
       position: absolute;
-      top: 52%;
+      top: 42%; /* Subido a la altura de 'Día y hora' */
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 75%;
-      height: 75%;
+      width: 65%;
+      height: 65%;
       background-image: url('watermark.png');
       background-repeat: no-repeat;
       background-position: center;
       background-size: contain;
-      opacity: 0.04; /* Ajuste suave para marca de agua elegantísima */
+      opacity: 0.08; /* Ligeramente más visible para que destaque en el blanco */
       pointer-events: none;
       z-index: 0;
     }
 
-    /* Garantizar que el contenido interactivo quede sobre la marca de agua */
     .app-container > * {
       position: relative;
       z-index: 1;
