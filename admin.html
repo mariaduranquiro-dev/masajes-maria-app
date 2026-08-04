@@ -37,10 +37,51 @@
     .btn-gold { background-color: #B89047; color: #FFFFFF; border-color: #B89047; }
     .btn-danger { background-color: #DC2626; color: #FFFFFF; border: none; }
 
-    .calendar-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: #E2DBCF; border: 1px solid #E2DBCF; border-radius: 8px; overflow: hidden; min-width: 650px; }
+    /* CONTENEDOR DEL CALENDARIO CON MARCA DE AGUA AMPLIA CENTRADA */
+    .calendar-scroll-wrapper { 
+      width: 100%; 
+      overflow-x: auto; 
+      -webkit-overflow-scrolling: touch; 
+      position: relative;
+    }
+
+    .calendar-grid { 
+      display: grid; 
+      grid-template-columns: repeat(6, 1fr); 
+      gap: 1px; 
+      background: #E2DBCF; 
+      border: 1px solid #E2DBCF; 
+      border-radius: 8px; 
+      overflow: hidden; 
+      min-width: 650px; 
+      position: relative;
+    }
+
+    /* EFECTO MARCA DE AGUA EN EL CALENDARIO DEL ADMIN */
+    .calendar-grid::before {
+      content: "";
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 320px; /* Tamaño amplio para cubrir el centro del calendario */
+      height: 320px;
+      background-image: url('watermark.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      opacity: 0.05; /* Sutil y elegante para no molestar a la lectura */
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .day-header, .day-column {
+      position: relative;
+      z-index: 2; /* Fichas y texto por encima de la marca de agua */
+    }
+
     .day-header { background: #0B1E36; color: #FFFFFF; font-size: 11px; text-align: center; padding: 8px 4px; font-weight: 500; font-family: sans-serif; }
-    .day-column { background: #FCFBF9; min-height: 320px; padding: 6px; }
+    .day-column { background: rgba(252, 251, 249, 0.92); min-height: 320px; padding: 6px; }
 
     .day-num { text-align: right; font-weight: bold; font-size: 12px; color: #0B1E36; margin-bottom: 6px; }
     .day-num.today { color: #B89047; }
