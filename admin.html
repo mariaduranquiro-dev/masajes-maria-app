@@ -199,6 +199,23 @@
     </div>
   </div>
 
+  <!-- MODAL INTEGRADO PARA REGISTRAR PAGO A CUENTA (Sustituye al prompt) -->
+  <div class="modal" id="modal-agregar-pago">
+    <div class="modal-content" style="max-width:380px;">
+      <div class="modal-header">💳 Registrar Pago / Abono</div>
+      <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:15px; line-height:1.4;" id="info-pago-bono">
+        Cargando detalles...
+      </div>
+      <form id="form-pago-bono" onsubmit="guardarAbonoPago(event)">
+        <label style="font-size:11px; font-family:sans-serif; font-weight:bold; color:#0B1E36;">¿Cuánto dinero entrega hoy el cliente (€)?</label>
+        <input type="number" id="pago_monto_ingresar" step="0.01" min="0.01" required placeholder="Ej. 50">
+        
+        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Pago</button>
+        <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalAgregarPago()">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL GESTION CITA -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
@@ -282,6 +299,7 @@
 
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
+  let bonoPagoSeleccionado = null; // Para guardar datos del bono a cobrar
 
   function verificarAccesoGuardado() {
     if (localStorage.getItem('admin_durán_auth') === 'true') {
@@ -423,7 +441,7 @@
             
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
               <div>${badgePago}</div>
-              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="registrarAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Añadir Pago</button>` : ''}
+              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Añadir Pago</button>` : ''}
             </div>
           </div>
         `;
@@ -432,19 +450,36 @@
     } catch (e) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${e.message}</div>`; }
   }
 
-  // Registrar un abono a cuenta de un bono existente
-  async function registrarAbonoPago(idBono, montoActual, precioTotal, clienteNombre) {
+  // Abrir Modal de Pago Integrado
+  function abrirModalAbonoPago(idBono, montoActual, precioTotal, clienteNombre) {
     const pendiente = precioTotal - montoActual;
-    const ingresoStr = prompt(`Registrar cobro para ${clienteNombre}:\nPendiente de pago: ${pendiente} €\n\n¿Cuánto dinero te entrega hoy el cliente (€)?`, pendiente);
-    
-    if (ingresoStr !== null) {
-      const ingresoNum = parseFloat(ingresoStr);
-      if (!isNaN(ingresoNum) && ingresoNum > 0) {
-        const nuevoMontoPagado = montoActual + ingresoNum;
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        await supabase.from('bonos').update({ monto_pagado: nuevoMontoPagado }).eq('id', idBono);
-        cargarListaBonos();
-      }
+    bonoPagoSeleccionado = { idBono, montoActual, precioTotal, clienteNombre, pendiente };
+
+    document.getElementById('info-pago-bono').innerHTML = `
+      Registrar cobro para <b>${clienteNombre}</b>.<br>
+      • Pendiente de pago actual: <b style="color:#DC2626;">${pendiente} €</b><br>
+      • Pagado hasta hoy: ${montoActual} € / ${precioTotal} €
+    `;
+    document.getElementById('pago_monto_ingresar').value = pendiente;
+    document.getElementById('modal-agregar-pago').style.display = 'flex';
+  }
+
+  function cerrarModalAgregarPago() {
+    document.getElementById('modal-agregar-pago').style.display = 'none';
+    bonoPagoSeleccionado = null;
+  }
+
+  async function guardarAbonoPago(e) {
+    e.preventDefault();
+    if (!bonoPagoSeleccionado) return;
+
+    const ingresoNum = parseFloat(document.getElementById('pago_monto_ingresar').value);
+    if (!isNaN(ingresoNum) && ingresoNum > 0) {
+      const nuevoMontoPagado = bonoPagoSeleccionado.montoActual + ingresoNum;
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('bonos').update({ monto_pagado: nuevoMontoPagado }).eq('id', bonoPagoSeleccionado.idBono);
+      cerrarModalAgregarPago();
+      cargarListaBonos();
     }
   }
 
