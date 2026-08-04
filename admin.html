@@ -210,9 +210,6 @@
     <div>
       <div class="card">
         <div class="side-title">Acciones Rápidas (iPad/iPhone)</div>
-        <div class="quick-action-item" onclick="abrirModalManual()">
-          <span>✚ Añadir Cita Manual</span>
-        </div>
         <div class="quick-action-item" onclick="abrirModalGestorBonos()">
           <span>🎟 Gestor de Bonos y Pagos</span>
           <span style="font-size:10px; color:#B89047; background:#FFFDF9; padding:2px 6px; border-radius:10px; border:1px solid #B89047;">Activo</span>
@@ -282,30 +279,18 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS CON CONTROL DE PAGOS PARCIALES -->
+  <!-- GESTOR DE BONOS (SOLO CONTROL DE PAGOS Y SALDOS) -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">🎟 Gestor de Bonos y Control de Pagos</div>
-      
-      <form id="form-crear-bono" style="margin-bottom: 20px; background:#FFFDF9; padding:12px; border:1px dashed #B89047; border-radius:8px;">
-        <strong style="font-size:12px; display:block; margin-bottom:8px; color:#0B1E36;">Crear Nuevo Bono para Cliente:</strong>
-        <input type="text" id="b_nombre" placeholder="Nombre completo del cliente" required style="margin-bottom:6px;">
-        <input type="tel" id="b_telefono" placeholder="Teléfono WhatsApp (Ej: 612345678)" required style="margin-bottom:6px;">
-        
-        <div style="display:flex; gap:8px;">
-          <select id="b_sesiones" style="margin-bottom:6px; flex:1;" onchange="actualizarPrecioPredeterminado()">
-            <option value="3">Bono 3 Sesiones (90 €)</option>
-            <option value="5">Bono 5 Sesiones (140 €)</option>
-          </select>
-          <input type="number" id="b_pagado_hoy" placeholder="Pagado hoy (€)" value="90" required style="margin-bottom:6px; flex:1;">
-        </div>
-        <button type="submit" class="btn btn-gold" style="width:100%; padding:8px; margin-top:4px;">+ Activar y Guardar Pago</button>
-      </form>
+      <div style="font-size: 11px; color: #666; font-family: sans-serif; margin-bottom: 12px;">
+        💡 Para crear un nuevo bono, utiliza el formulario interactivo de la derecha (Mini-Index).
+      </div>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
         Bonos Activos y Estado de Pago:
       </div>
-      <div id="lista-bonos-activos" style="max-height:220px; overflow-y:auto;"></div>
+      <div id="lista-bonos-activos" style="max-height:260px; overflow-y:auto;"></div>
 
       <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalGestorBonos()">Cerrar</button>
     </div>
@@ -357,32 +342,6 @@
         <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Anular Cita</button>
         <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color: #333;" onclick="cerrarModalConfirmarAnulacion()">Cancelar</button>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL CITA MANUAL -->
-  <div class="modal" id="modal-cita">
-    <div class="modal-content">
-      <div class="modal-header">Nueva Cita Manual</div>
-      <form id="form-manual">
-        <label style="font-size:11px; font-family:sans-serif;">Cliente:</label>
-        <input type="text" id="m_nombre" required placeholder="Nombre completo">
-        <label style="font-size:11px; font-family:sans-serif;">Teléfono WhatsApp:</label>
-        <input type="tel" id="m_telefono" required placeholder="600123456">
-        <label style="font-size:11px; font-family:sans-serif;">Servicio:</label>
-        <select id="m_servicio">
-          <option value="1">Quiromasaje Descontracturante (35 €)</option>
-          <option value="2">Sesión de Bono de Masajes (BONO)</option>
-        </select>
-        <label style="font-size:11px; font-family:sans-serif;">Fecha:</label>
-        <input type="date" id="m_fecha" required>
-        <label style="font-size:11px; font-family:sans-serif;">Hora:</label>
-        <input type="time" id="m_hora" value="10:00" required>
-        <label style="font-size:11px; font-family:sans-serif;">Nota:</label>
-        <input type="text" id="m_nota" placeholder="Dolencia o comentario">
-        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px;">Guardar Cita</button>
-        <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ccc;" onclick="cerrarModalManual()">Cancelar</button>
-      </form>
     </div>
   </div>
 
@@ -543,9 +502,7 @@
         });
       }
 
-      // -------------------------------------------------------------
       // CÁLCULO DE CONTABILIDAD SEGÚN EL PERIODO SELECCIONADO
-      // -------------------------------------------------------------
       const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
       let startDate, endDate;
       const refDate = new Date(lunes);
@@ -581,7 +538,6 @@
       let ingresosPeriodo = 0;
       let sesionesPeriodo = citasPeriodo ? citasPeriodo.length : 0;
 
-      // Sumar citas sueltas pagadas (35€)
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
           if (c.estado === 'pagado') {
@@ -590,7 +546,6 @@
         });
       }
 
-      // Sumar bonos adquiridos/pagados cuyo created_at esté dentro del periodo seleccionado
       if (bonos) {
         bonos.forEach(b => {
           if (b.created_at) {
@@ -603,7 +558,6 @@
         });
       }
 
-      // Deuda pendiente global de bonos activos
       let pendienteBonosTotal = 0;
       if (bonos) {
         bonos.forEach(b => {
@@ -780,11 +734,6 @@
     cargarAgendaSemanal();
   }
 
-  function actualizarPrecioPredeterminado() {
-    const ses = document.getElementById('b_sesiones').value;
-    document.getElementById('b_pagado_hoy').value = (ses === "5") ? 140 : 90;
-  }
-
   async function abrirModalGestorBonos() {
     document.getElementById('modal-gestor-bonos').style.display = 'flex';
     cargarListaBonos();
@@ -871,34 +820,6 @@
       cargarAgendaSemanal();
     }
   }
-
-  document.getElementById('form-crear-bono').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const sesiones = parseInt(document.getElementById('b_sesiones').value, 10);
-    const precioTotal = (sesiones === 5) ? 140 : 90;
-    const pagadoHoy = parseFloat(document.getElementById('b_pagado_hoy').value) || 0;
-
-    const nuevoBono = {
-      cliente_nombre: document.getElementById('b_nombre').value,
-      cliente_telefono: document.getElementById('b_telefono').value.trim(),
-      sesiones_totales: sesiones,
-      sesiones_restantes: sesiones,
-      precio_total: precioTotal,
-      monto_pagado: pagadoHoy
-    };
-
-    const { error } = await supabase.from('bonos').insert([nuevoBono]);
-
-    if (!error) {
-      document.getElementById('form-crear-bono').reset();
-      actualizarPrecioPredeterminado();
-      cargarListaBonos();
-      cargarAgendaSemanal();
-    } else {
-      alert("Error al guardar el bono: " + error.message);
-    }
-  });
 
   async function abrirModalRecordatorios48h() {
     const container = document.getElementById('lista-recordatorios-48h');
@@ -1018,34 +939,6 @@
     citaSeleccionada = null;
     cargarAgendaSemanal();
   }
-
-  function abrirModalManual() { document.getElementById('modal-cita').style.display = 'flex'; }
-  function cerrarModalManual() { document.getElementById('modal-cita').style.display = 'none'; }
-  function cerrarModalExito() { document.getElementById('modal-notificacion-exito').style.display = 'none'; }
-
-  document.getElementById('form-manual').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const nueva = {
-      cliente_nombre: document.getElementById('m_nombre').value,
-      cliente_telefono: document.getElementById('m_telefono').value,
-      servicio_id: parseInt(document.getElementById('m_servicio').value, 10),
-      fecha: document.getElementById('m_fecha').value,
-      hora: document.getElementById('m_hora').value,
-      nota: document.getElementById('m_nota').value,
-      estado: 'pendiente'
-    };
-
-    const { error } = await supabase.from('citas').insert([nueva]);
-
-    if (!error) {
-      document.getElementById('form-manual').reset();
-      cerrarModalManual();
-      document.getElementById('modal-notificacion-exito').style.display = 'flex';
-      cargarAgendaSemanal();
-    }
-  });
 
   window.onload = verificarAccesoGuardado;
 </script>
