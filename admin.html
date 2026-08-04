@@ -117,6 +117,35 @@
 
   <div class="main-grid">
     <div class="card">
+      <!-- RESUMEN ECONÓMICO Y CONTABILIDAD CON FILTRO DE PERIODO -->
+      <div style="background: #FFFDF9; border: 1px solid #B89047; border-radius: 10px; margin-bottom: 15px; padding: 12px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-family:sans-serif;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size: 11px; font-weight: bold; color: #B89047; text-transform: uppercase; letter-spacing: 1px;">📊 Resumen Económico</span>
+              <select id="filtro-periodo-contabilidad" onchange="cargarAgendaSemanal()" style="margin:0; padding:2px 6px; font-size:10px; border-radius:4px; border:1px solid #B89047; background:#FFF; color:#0B1E36; cursor:pointer;">
+                <option value="semana">📅 Semana Actual</option>
+                <option value="mes">📅 Mes Actual</option>
+                <option value="2meses">📅 Últimos 2 Meses</option>
+                <option value="3meses">📅 Últimos 3 Meses</option>
+                <option value="anio">📅 Este Año</option>
+              </select>
+            </div>
+            <div id="stat-ingresos-periodo" style="font-size: 18px; font-weight: bold; color: #0B1E36; margin-top: 4px;">0 €</div>
+          </div>
+          <div style="display:flex; gap:20px; text-align:right; font-size:11px;">
+            <div>
+              <span style="color: #666; display:block;">Sesiones (Periodo)</span>
+              <strong id="stat-sesiones-periodo" style="font-size: 14px; color: #0B1E36;">0</strong>
+            </div>
+            <div>
+              <span style="color: #666; display:block;">Pendiente Bonos (Total)</span>
+              <strong id="stat-pendiente-bonos" style="font-size: 14px; color: #DC2626;">0 €</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card-header">
         <div>
           <h2 class="card-title">Agenda Semanal — Panel de Gestión (iPad)</h2>
@@ -453,7 +482,7 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      const { data: citas } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]).order('hora', { ascending: true });
+      const { data: citasSemana } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]).order('hora', { ascending: true });
       const { data: bonos } = await supabase.from('bonos').select('*');
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
 
@@ -485,8 +514,8 @@
         });
       }
 
-      if (citas && citas.length > 0) {
-        citas.forEach(cita => {
+      if (citasSemana && citasSemana.length > 0) {
+        citasSemana.forEach(cita => {
           const indexCol = fechasSemana.indexOf(cita.fecha);
           if (indexCol !== -1) {
             const col = document.getElementById(`col-${indexCol}`);
@@ -513,6 +542,82 @@
           }
         });
       }
+
+      // -------------------------------------------------------------
+      // CÁLCULO DE CONTABILIDAD SEGÚN EL PERIODO SELECCIONADO
+      // -------------------------------------------------------------
+      const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
+      let startDate, endDate;
+      const refDate = new Date(lunes);
+
+      if (periodoSelect === 'semana') {
+        const domingo = new Date(lunes);
+        domingo.setDate(lunes.getDate() + 5);
+        startDate = formatDate(lunes);
+        endDate = formatDate(domingo);
+      } else if (periodoSelect === 'mes') {
+        const year = refDate.getFullYear();
+        const month = refDate.getMonth();
+        startDate = formatDate(new Date(year, month, 1));
+        endDate = formatDate(new Date(year, month + 1, 0));
+      } else if (periodoSelect === '2meses') {
+        const year = refDate.getFullYear();
+        const month = refDate.getMonth();
+        startDate = formatDate(new Date(year, month - 1, 1));
+        endDate = formatDate(new Date(year, month + 1, 0));
+      } else if (periodoSelect === '3meses') {
+        const year = refDate.getFullYear();
+        const month = refDate.getMonth();
+        startDate = formatDate(new Date(year, month - 2, 1));
+        endDate = formatDate(new Date(year, month + 1, 0));
+      } else if (periodoSelect === 'anio') {
+        const year = refDate.getFullYear();
+        startDate = `${year}-01-01`;
+        endDate = `${year}-12-31`;
+      }
+
+      const { data: citasPeriodo } = await supabase.from('citas').select('*').gte('fecha', startDate).lte('fecha', endDate);
+
+      let ingresosPeriodo = 0;
+      let sesionesPeriodo = citasPeriodo ? citasPeriodo.length : 0;
+
+      // Sumar citas sueltas pagadas (35€)
+      if (citasPeriodo) {
+        citasPeriodo.forEach(c => {
+          if (c.estado === 'pagado') {
+            ingresosPeriodo += 35;
+          }
+        });
+      }
+
+      // Sumar bonos adquiridos/pagados cuyo created_at esté dentro del periodo seleccionado
+      if (bonos) {
+        bonos.forEach(b => {
+          if (b.created_at) {
+            const fechaBono = b.created_at.substring(0, 10);
+            if (fechaBono >= startDate && fechaBono <= endDate) {
+              const pagadoBono = b.monto_pagado !== undefined ? b.monto_pagado : (b.precio_total || 90);
+              ingresosPeriodo += pagadoBono;
+            }
+          }
+        });
+      }
+
+      // Deuda pendiente global de bonos activos
+      let pendienteBonosTotal = 0;
+      if (bonos) {
+        bonos.forEach(b => {
+          const pTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+          const pPagado = b.monto_pagado !== undefined ? b.monto_pagado : pTotal;
+          const pRestante = pTotal - pPagado;
+          if (pRestante > 0) pendienteBonosTotal += pRestante;
+        });
+      }
+
+      document.getElementById('stat-ingresos-periodo').innerText = `${ingresosPeriodo} €`;
+      document.getElementById('stat-sesiones-periodo').innerText = sesionesPeriodo;
+      document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosTotal} €`;
+
     } catch (e) { console.error(e); }
 
     cargarBloqueosLista();
@@ -535,35 +640,16 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
-      // Obtener clientes únicos desde citas y bonos
-      const { data: citas } = await supabase.from('citas').select('cliente_nombre, cliente_telefono');
-      const { data: bonos } = await supabase.from('bonos').select('cliente_nombre, cliente_telefono');
-      const { data: notasDb } = await supabase.from('clientes').select('*');
-
-      const notasMap = {};
-      if (notasDb) {
-        notasDb.forEach(n => { notasMap[n.telefono] = n.notas; });
-      }
-
-      const clientesMap = {};
-      if (citas) {
-        citas.forEach(c => {
-          if (c.cliente_telefono) clientesMap[c.cliente_telefono.trim()] = c.cliente_nombre;
-        });
-      }
-      if (bonos) {
-        bonos.forEach(b => {
-          if (b.cliente_telefono) clientesMap[b.cliente_telefono.trim()] = b.cliente_nombre;
-        });
-      }
+      const { data: clientesReg } = await supabase.from('clientes').select('*');
 
       clientesGlobalCache = [];
-      for (const [tel, nom] of Object.entries(clientesMap)) {
-        clientesGlobalCache.push({
-          telefono: tel,
-          nombre: nom,
-          notas: notasMap[tel] || ''
+      if (clientesReg) {
+        clientesReg.forEach(c => {
+          clientesGlobalCache.push({
+            telefono: c.telefono,
+            nombre: c.nombre || 'Cliente sin nombre',
+            notas: c.notas || ''
+          });
         });
       }
 
@@ -631,11 +717,7 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
-      // Upsert en la tabla clientes
-      const { error } = await supabase.from('clientes').upsert([
-        { telefono: clienteTelefonoActual, notas: nuevaNota }
-      ], { onConflict: 'telefono' });
+      const { error } = await supabase.from('clientes').update({ notas: nuevaNota }).eq('telefono', clienteTelefonoActual);
 
       if (!error) {
         cerrarModalEditarNota();
