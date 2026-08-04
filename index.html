@@ -24,8 +24,13 @@
     .btn-submit { width: 100%; background-color: #B89047; color: #FFFFFF; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 1px; margin-top: 10px; }
     .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
     .time-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+    
+    /* Botones de Horario Disponibles */
     .time-chip { flex: 1; min-width: 70px; text-align: center; padding: 8px; border: 1px solid #D1C7B7; border-radius: 6px; font-size: 13px; font-family: sans-serif; cursor: pointer; user-select: none; }
     .time-chip.selected { background: #0B1E36; color: #FFFFFF; border-color: #0B1E36; font-weight: bold; }
+    
+    /* Botones de Horario Ocupados / Bloqueados */
+    .time-chip.occupied { background: #EAEAEA; color: #A0AEC0; border-color: #CBD5E0; cursor: not-allowed; text-decoration: line-through; opacity: 0.7; pointer-events: none; }
 
     /* Modales Integrados */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(2px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
@@ -71,13 +76,10 @@
     <input type="date" id="fecha" required>
 
     <label>Horarios disponibles *</label>
-    <div class="time-slots">
-      <div class="time-chip selected" onclick="selectTime(this, '10:00')">10:00</div>
-      <div class="time-chip" onclick="selectTime(this, '16:00')">16:00</div>
-      <div class="time-chip" onclick="selectTime(this, '18:30')">18:30</div>
-      <div class="time-chip" onclick="selectTime(this, '19:30')">19:30</div>
+    <div class="time-slots" id="time-slots">
+      <!-- Se generan dinámicamente según la fecha seleccionada -->
     </div>
-    <input type="hidden" id="hora" value="10:00">
+    <input type="hidden" id="hora" value="">
 
     <!-- 3. Datos de contacto -->
     <div class="section-title" style="margin-top: 20px;">3. Tus datos de contacto</div>
@@ -120,6 +122,12 @@
 </div>
 
 <script>
+  const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
+  // IMPORTANTE: Pon entre las comillas tu clave anon public de Supabase
+  const SUPABASE_KEY = "TU_CLAVE_ANON_PUBLIC_AQUI";
+
+  const HORARIOS_ESTANDAR = ['10:00', '16:00', '18:30', '19:30'];
+
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
@@ -127,7 +135,7 @@
   }
 
   function selectTime(element, timeVal) {
-    document.querySelectorAll('.time-chip').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('#time-slots .time-chip').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
     document.getElementById('hora').value = timeVal;
   }
@@ -140,16 +148,100 @@
     document.getElementById('modal-error').style.display = 'none';
   }
 
+  // Comprobar horarios libres/ocupados para la fecha seleccionada
+  async function actualizarHorariosDisponibles() {
+    const fechaVal = document.getElementById('fecha').value;
+    const container = document.getElementById('time-slots');
+    
+    if (!fechaVal) {
+      container.innerHTML = '<div style="font-size:12px; color:#888; font-family:sans-serif;">Selecciona una fecha para ver horarios disponibles.</div>';
+      return;
+    }
+
+    container.innerHTML = '<div style="font-size:12px; color:#666; font-family:sans-serif;">Comprobando disponibilidad...</div>';
+
+    let horasOcupadas = [];
+
+    if (SUPABASE_KEY !== "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A") {
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: citas, error } = await supabase
+          .from('citas')
+          .select('hora')
+          .eq('fecha', fechaVal);
+
+        if (!error && citas) {
+          horasOcupadas = citas.map(c => c.hora.substring(0, 5));
+        }
+      } catch (err) {
+        console.error("Error al consultar disponibilidad:", err);
+      }
+    }
+
+    container.innerHTML = '';
+    let seleccionAutoHecha = false;
+
+    HORARIOS_ESTANDAR.forEach(horaStr => {
+      const estaOcupado = horasOcupadas.includes(horaStr);
+      const chip = document.createElement('div');
+      
+      if (estaOcupado) {
+        chip.className = 'time-chip occupied';
+        chip.innerText = horaStr + ' 🔒';
+        chip.title = 'Este horario ya se encuentra reservado';
+      } else {
+        chip.className = 'time-chip';
+        chip.innerText = horaStr;
+        chip.onclick = function() { selectTime(this, horaStr); };
+
+        // Seleccionar automáticamente el primer horario libre
+        if (!seleccionAutoHecha) {
+          chip.classList.add('selected');
+          document.getElementById('hora').value = horaStr;
+          seleccionAutoHecha = true;
+        }
+      }
+
+      container.appendChild(chip);
+    });
+
+    if (!seleccionAutoHecha) {
+      document.getElementById('hora').value = '';
+      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">⚠️ No quedan huecos libres para la fecha seleccionada.</div>';
+    }
+  }
+
+  // Configuración Inicial al cargar la página
+  window.addEventListener('DOMContentLoaded', () => {
+    const inputFecha = document.getElementById('fecha');
+    const hoy = new Date();
+    const hoyFormatted = hoy.toISOString().split('T')[0];
+    
+    // No permitir seleccionar días pasados
+    inputFecha.min = hoyFormatted;
+    inputFecha.value = hoyFormatted;
+
+    // Escuchar cambios de fecha
+    inputFecha.addEventListener('change', actualizarHorariosDisponibles);
+
+    // Cargar horarios del día de hoy
+    actualizarHorariosDisponibles();
+  });
+
+  // Envío del Formulario
   document.getElementById('booking-form').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    const horaVal = document.getElementById('hora').value;
+    if (!horaVal) {
+      document.getElementById('error-mensaje').innerText = "Por favor, selecciona un horario disponible.";
+      document.getElementById('modal-error').style.display = 'flex';
+      return;
+    }
 
     const btn = document.getElementById('btn-submit');
     btn.disabled = true;
     btn.innerText = "Guardando reserva...";
-
-    const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
-    // REEMPLAZA CON TU CLAVE ANON PUBLIC
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A"; 
 
     if (SUPABASE_KEY === "TU_CLAVE_ANON_PUBLIC_AQUI") {
       document.getElementById('error-mensaje').innerText = "Falta configurar la clave de Supabase en index.html.";
@@ -164,22 +256,41 @@
 
       const servicio_id = parseInt(document.getElementById('servicio_id').value, 10);
       const fecha = document.getElementById('fecha').value;
-      const hora = document.getElementById('hora').value;
       const cliente_nombre = document.getElementById('nombre').value;
       const cliente_telefono = document.getElementById('telefono').value;
       const nota = document.getElementById('nota').value;
 
+      // Verificación final de seguridad antes de insertar
+      const { data: citasExistentes } = await supabase
+        .from('citas')
+        .select('id')
+        .eq('fecha', fecha)
+        .eq('hora', horaVal);
+
+      if (citasExistentes && citasExistentes.length > 0) {
+        document.getElementById('error-mensaje').innerText = "¡Lo sentimos! Este horario acaba de ser reservado por otro cliente. Elige otra hora.";
+        document.getElementById('modal-error').style.display = 'flex';
+        actualizarHorariosDisponibles();
+        btn.disabled = false;
+        btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
+        return;
+      }
+
       const { data, error } = await supabase
         .from('citas')
-        .insert([{ servicio_id, fecha, hora, cliente_nombre, cliente_telefono, nota }]);
+        .insert([{ servicio_id, fecha, hora: horaVal, cliente_nombre, cliente_telefono, nota }]);
 
       if (error) {
         document.getElementById('error-mensaje').innerText = "Error: " + error.message;
         document.getElementById('modal-error').style.display = 'flex';
       } else {
-        document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fecha}</b> a las <b>${hora} h</b> ha sido registrada.`;
+        document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fecha}</b> a las <b>${horaVal} h</b> ha sido registrada.`;
         document.getElementById('modal-exito').style.display = 'flex';
         document.getElementById('booking-form').reset();
+        
+        // Reset a fecha de hoy y recarga de disponibilidad
+        document.getElementById('fecha').value = hoyFormatted;
+        actualizarHorariosDisponibles();
       }
     } catch (err) {
       document.getElementById('error-mensaje').innerText = "Error de conexión: " + err.message;
