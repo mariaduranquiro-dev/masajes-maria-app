@@ -123,8 +123,7 @@
 
 <script>
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
-  // IMPORTANTE: Pon entre las comillas tu clave anon public de Supabase
-  const SUPABASE_KEY = "TU_CLAVE_ANON_PUBLIC_AQUI";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
 
   const HORARIOS_ESTANDAR = ['10:00', '16:00', '18:30', '19:30'];
 
@@ -162,20 +161,18 @@
 
     let horasOcupadas = [];
 
-    if (SUPABASE_KEY !== "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A") {
-      try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: citas, error } = await supabase
-          .from('citas')
-          .select('hora')
-          .eq('fecha', fechaVal);
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: citas, error } = await supabase
+        .from('citas')
+        .select('hora')
+        .eq('fecha', fechaVal);
 
-        if (!error && citas) {
-          horasOcupadas = citas.map(c => c.hora.substring(0, 5));
-        }
-      } catch (err) {
-        console.error("Error al consultar disponibilidad:", err);
+      if (!error && citas) {
+        horasOcupadas = citas.map(c => c.hora.substring(0, 5));
       }
+    } catch (err) {
+      console.error("Error al consultar disponibilidad:", err);
     }
 
     container.innerHTML = '';
@@ -243,14 +240,6 @@
     btn.disabled = true;
     btn.innerText = "Guardando reserva...";
 
-    if (SUPABASE_KEY === "TU_CLAVE_ANON_PUBLIC_AQUI") {
-      document.getElementById('error-mensaje').innerText = "Falta configurar la clave de Supabase en index.html.";
-      document.getElementById('modal-error').style.display = 'flex';
-      btn.disabled = false;
-      btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
-      return;
-    }
-
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -289,7 +278,8 @@
         document.getElementById('booking-form').reset();
         
         // Reset a fecha de hoy y recarga de disponibilidad
-        document.getElementById('fecha').value = hoyFormatted;
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha').value = hoy;
         actualizarHorariosDisponibles();
       }
     } catch (err) {
