@@ -90,7 +90,7 @@
 
     /* Modales Integrados */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 420px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 440px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; }
     
     .status-btn-group { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
@@ -98,6 +98,7 @@
     .btn-status-opt:hover { border-color: #B89047; }
     
     input, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #D1C7B7; border-radius: 6px; font-size: 14px; font-family: sans-serif; }
+    .recordatorio-card { background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; }
   </style>
 </head>
 <body>
@@ -158,6 +159,10 @@
         <div class="side-title">Acciones Rápidas (iPad/iPhone)</div>
         <div class="quick-action-item" onclick="abrirModalManual()">
           <span>✚ Añadir Cita Manual</span>
+        </div>
+        <div class="quick-action-item" onclick="abrirModalRecordatorios48h()">
+          <span>💬 Recordatorios 48h (Próximos)</span>
+          <span style="font-size:10px; color:#B89047; background:#FFFDF9; padding:2px 6px; border-radius:10px; border:1px solid #B89047;">Auto</span>
         </div>
         <div class="quick-action-item">
           <span>🎟 Gestor de Bonos</span>
@@ -295,17 +300,30 @@
     </div>
   </div>
 
+  <!-- MODAL 5: Gestor de Recordatorios 48h -->
+  <div class="modal" id="modal-recordatorios">
+    <div class="modal-content">
+      <div class="modal-header">💬 Recordatorios Próximos (48h)</div>
+      <p style="font-size:12px; font-family:sans-serif; color:#666; margin-bottom:15px;">
+        Clientes con cita en los próximos 2 días para recordar o confirmar asistencia:
+      </p>
+      <div id="lista-recordatorios-48h" style="max-height: 280px; overflow-y: auto;">
+        <!-- Se carga dinámicamente -->
+      </div>
+      <button class="btn" style="width:100%; padding:10px; margin-top:10px; background:#ECE7DF; color:#333;" onclick="cerrarModalRecordatorios48h()">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
 <script>
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
 
-  // PIN de acceso configurable (puedes cambiar "1234" por la clave que quieras)
   const PIN_ACCESO = "1234";
-
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
 
-  // Control de Acceso y Persistencia en el Dispositivo
   function verificarAccesoGuardado() {
     if (localStorage.getItem('admin_durán_auth') === 'true') {
       document.getElementById('modal-login').style.display = 'none';
@@ -409,6 +427,63 @@
     }
   }
 
+  // Cargar Recordatorios Próximos (48 Horas)
+  async function abrirModalRecordatorios48h() {
+    const container = document.getElementById('lista-recordatorios-48h');
+    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando citas próximas...</div>';
+    document.getElementById('modal-recordatorios').style.display = 'flex';
+
+    const hoy = new Date();
+    const en48h = new Date(hoy);
+    en48h.setDate(hoy.getDate() + 2);
+
+    const fechaHoyStr = formatDate(hoy);
+    const fecha48hStr = formatDate(en48h);
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: citas, error } = await supabase
+        .from('citas')
+        .select('*')
+        .gte('fecha', fechaHoyStr)
+        .lte('fecha', fecha48hStr)
+        .order('fecha', { ascending: true })
+        .order('hora', { ascending: true });
+
+      if (error || !citas || citas.length === 0) {
+        container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas programadas para los próximos 2 días.</div>';
+        return;
+      }
+
+      let html = '';
+      citas.forEach(cita => {
+        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita de ${servicioTxt} el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. Si necesitas modificar o anular la cita, avísanos con antelación. ¡Gracias!`);
+        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
+
+        html += `
+          <div class="recordatorio-card">
+            <div>
+              <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
+              <span style="font-size:11px; color:#555;">📅 ${cita.fecha} • ⏰ ${cita.hora.substring(0,5)} h</span>
+            </div>
+            <a href="${linkWs}" target="_blank" class="btn" style="background:#25D366; color:#FFF; border:none; text-decoration:none;">
+              💬 Enviar 48h
+            </a>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`;
+    }
+  }
+
+  function cerrarModalRecordatorios48h() {
+    document.getElementById('modal-recordatorios').style.display = 'none';
+  }
+
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
@@ -421,7 +496,7 @@
       ${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}
     `;
 
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora} h. ¡Te esperamos!`);
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     const btnWs = document.getElementById('btn-ws-modal');
     btnWs.onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
 
@@ -491,7 +566,6 @@
     }
   });
 
-  // Ejecutar verificación de sesión al cargar la página
   window.onload = verificarAccesoGuardado;
 </script>
 
