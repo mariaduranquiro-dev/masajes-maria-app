@@ -89,7 +89,7 @@
     }
 
     /* Modales Integrados */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.6); backdrop-filter: blur(2px); justify-content: center; align-items: center; z-index: 1000; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 420px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
     .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; }
     
@@ -108,7 +108,7 @@
       <h1 class="logo-title">MARÍA DURÁN</h1>
       <div class="logo-subtitle">— QUIROMASAJISTA —</div>
     </div>
-    <div class="badge-pwa">VISTA PREVIA APP WEB / PWA</div>
+    <div class="badge-pwa">PANEL DE GESTIÓN</div>
   </div>
 
   <div class="main-grid">
@@ -144,7 +144,6 @@
         </div>
       </div>
 
-      <!-- Leyenda de Colores (Actualizada) -->
       <div class="legend-box">
         <strong>Leyenda de colores:</strong> &nbsp;<br>
         <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
@@ -165,10 +164,10 @@
           <span style="font-size:10px; color:#B89047;">(Descontar 1 uso)</span>
         </div>
         <div class="quick-action-item" onclick="cargarAgendaSemanal()">
-          <span>💬 Enviar Recordatorio WhatsApp</span>
+          <span>🔄 Actualizar Lista</span>
         </div>
-        <div class="quick-action-item" onclick="cargarAgendaSemanal()">
-          <span>🗑️ Eliminar / Anular Cita</span>
+        <div class="quick-action-item" style="color: #DC2626;" onclick="cerrarSesion()">
+          <span>🔒 Cerrar Sesión / Bloquear</span>
         </div>
       </div>
 
@@ -178,6 +177,22 @@
           <iframe src="index.html" style="width:100%; height:460px; border:none; border-radius:12px;"></iframe>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL PANTALLA DE ACCESO / LOGIN -->
+  <div class="modal" id="modal-login" style="display: flex;">
+    <div class="modal-content" style="text-align: center; max-width: 360px;">
+      <div style="font-size: 32px; margin-bottom: 4px;">🔐</div>
+      <div style="font-family: 'Georgia', serif; font-size: 20px; font-weight: bold; color: #0B1E36; margin-bottom: 2px;">MARÍA DURÁN</div>
+      <div style="font-size: 9px; color: #B89047; letter-spacing: 3px; font-weight: bold; margin-bottom: 20px;">ACCESO PRIVADO AGENDA</div>
+      
+      <form id="form-login" onsubmit="validarAcceso(event)">
+        <label style="font-size: 11px; color: #555; text-align: left; display: block; margin-bottom: 4px;">PIN de Acceso:</label>
+        <input type="password" id="pin-input" placeholder="Introduce el PIN" required style="text-align: center; font-size: 18px; letter-spacing: 6px;">
+        <div id="login-error" style="color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 10px; display: none;">PIN incorrecto. Inténtalo de nuevo.</div>
+        <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;">Desbloquear Panel</button>
+      </form>
     </div>
   </div>
 
@@ -266,7 +281,7 @@
     </div>
   </div>
 
-  <!-- MODAL 4: Confirmación Éxito Cita Manual (Integrado) -->
+  <!-- MODAL 4: Confirmación Éxito Cita Manual -->
   <div class="modal" id="modal-notificacion-exito">
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 42px; color: #1e8e3e; margin-bottom: 4px;">✓</div>
@@ -282,11 +297,42 @@
 
 <script>
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
-  // IMPORTANTE: Sustituye con tu clave anon public de Supabase
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
+
+  // PIN de acceso configurable (puedes cambiar "1234" por la clave que quieras)
+  const PIN_ACCESO = "1234";
 
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
+
+  // Control de Acceso y Persistencia en el Dispositivo
+  function verificarAccesoGuardado() {
+    if (localStorage.getItem('admin_durán_auth') === 'true') {
+      document.getElementById('modal-login').style.display = 'none';
+      cargarAgendaSemanal();
+    } else {
+      document.getElementById('modal-login').style.display = 'flex';
+    }
+  }
+
+  function validarAcceso(e) {
+    e.preventDefault();
+    const pinIngresado = document.getElementById('pin-input').value;
+    if (pinIngresado === PIN_ACCESO) {
+      localStorage.setItem('admin_durán_auth', 'true');
+      document.getElementById('modal-login').style.display = 'none';
+      document.getElementById('login-error').style.display = 'none';
+      cargarAgendaSemanal();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  }
+
+  function cerrarSesion() {
+    localStorage.removeItem('admin_durán_auth');
+    document.getElementById('pin-input').value = '';
+    document.getElementById('modal-login').style.display = 'flex';
+  }
 
   function getMonday(d) {
     d = new Date(d);
@@ -328,8 +374,6 @@
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     document.getElementById('label-mes').innerText = `${meses[lunes.getMonth()]} ${lunes.getFullYear()}`;
 
-    if (SUPABASE_KEY === "TU_CLAVE_ANON_PUBLIC_AQUI") return;
-
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: citas, error } = await supabase
@@ -365,7 +409,6 @@
     }
   }
 
-  // Modal Gestión
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
@@ -397,7 +440,6 @@
     cargarAgendaSemanal();
   }
 
-  // Confirmación Anulación
   function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
     document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.<br><br>Esta acción eliminará el registro de la agenda.`;
@@ -425,7 +467,6 @@
   function cerrarModalManual() { document.getElementById('modal-cita').style.display = 'none'; }
   function cerrarModalExito() { document.getElementById('modal-notificacion-exito').style.display = 'none'; }
 
-  // Submit Cita Manual (Con Notificación Integrada)
   document.getElementById('form-manual').addEventListener('submit', async function(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -450,7 +491,8 @@
     }
   });
 
-  window.onload = cargarAgendaSemanal;
+  // Ejecutar verificación de sesión al cargar la página
+  window.onload = verificarAccesoGuardado;
 </script>
 
 </body>
