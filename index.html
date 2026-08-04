@@ -141,14 +141,45 @@
     const container = document.getElementById('time-slots');
     if (!fechaVal) return;
 
+    // CONTROL FINES DE SEMANA (Sábado = 6, Domingo = 0)
+    const fechaObj = new Date(fechaVal + 'T00:00:00');
+    const diaSemana = fechaObj.getDay();
+
+    if (diaSemana === 0 || diaSemana === 6) {
+      document.getElementById('hora').value = '';
+      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>';
+      return;
+    }
+
     container.innerHTML = '<div style="font-size:12px; color:#666; font-family:sans-serif;">Comprobando disponibilidad...</div>';
     let horasOcupadas = [];
+    let diaBloqueadoCompleto = false;
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      // 1. Consultar citas ocupadas
       const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
       if (citas) horasOcupadas = citas.map(c => c.hora.substring(0, 5));
+
+      // 2. Consultar bloqueos manuales de María
+      const { data: bloqueos } = await supabase.from('bloqueos').select('*').eq('fecha', fechaVal);
+      if (bloqueos && bloqueos.length > 0) {
+        bloqueos.forEach(b => {
+          if (!b.hora || b.hora === '' || b.hora === 'ALL') {
+            diaBloqueadoCompleto = true;
+          } else {
+            horasOcupadas.push(b.hora.substring(0, 5));
+          }
+        });
+      }
     } catch (err) { console.error(err); }
+
+    if (diaBloqueadoCompleto) {
+      document.getElementById('hora').value = '';
+      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 Este día no está disponible para citas.</div>';
+      return;
+    }
 
     container.innerHTML = '';
     let seleccionAutoHecha = false;
@@ -218,7 +249,7 @@
           sesiones_totales: 3,
           sesiones_restantes: 2,
           precio_total: 90,
-          monto_pagado: 0 // Si compra por web, el cobro se acuerda en consulta
+          monto_pagado: 0
         };
 
         const { error: errorBono } = await supabase.from('bonos').insert([nuevoBono]);
