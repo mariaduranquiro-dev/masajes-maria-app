@@ -180,7 +180,7 @@
     </div>
   </div>
 
-  <!-- MODAL 1: Gestionar Cita Existente (Sustituye al prompt) -->
+  <!-- MODAL 1: Gestionar Cita Existente -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
       <div class="modal-header" id="g-cliente-nombre">Cliente</div>
@@ -208,7 +208,7 @@
         <button class="btn" style="background:#25D366; color:#FFF; border:none; flex:1; padding:10px;" id="btn-ws-modal">
           💬 WhatsApp
         </button>
-        <button class="btn btn-danger" style="padding:10px;" onclick="eliminarCitaActual()">
+        <button class="btn btn-danger" style="padding:10px;" onclick="pedirConfirmacionAnulacion()">
           🗑 Anular Cita
         </button>
       </div>
@@ -219,7 +219,26 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Nueva Cita Manual -->
+  <!-- MODAL 2: Confirmación de Anulación (Integrada dentro de la web) -->
+  <div class="modal" id="modal-confirmar-anulacion">
+    <div class="modal-content" style="text-align: center;">
+      <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
+      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center;">¿Anular Cita?</div>
+      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;" id="c-mensaje-anulacion">
+        ¿Estás seguro de que deseas anular esta cita?
+      </p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">
+          Sí, Anular Cita
+        </button>
+        <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color: #333;" onclick="cerrarModalConfirmarAnulacion()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Nueva Cita Manual -->
   <div class="modal" id="modal-cita">
     <div class="modal-content">
       <div class="modal-header">Nueva Cita Manual</div>
@@ -252,7 +271,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
 
   let fechaReferencia = new Date();
-  let citaSeleccionada = null; // Cita abierta en el modal
+  let citaSeleccionada = null;
 
   function getMonday(d) {
     d = new Date(d);
@@ -315,7 +334,6 @@
             const chipClass = cita.estado === 'pagado' ? 'chip-pagado' : (cita.estado === 'bono' ? 'chip-bono' : 'chip-pendiente');
             const precioTexto = cita.servicio_id === 2 ? 'Bono' : '35€';
 
-            // Guardar objeto en data attribute
             const chipHtml = `
               <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(cita)})'>
                 <span class="chip-time">${cita.hora.substring(0,5)}</span>
@@ -332,7 +350,7 @@
     }
   }
 
-  // Abrir Modal de Gestión Integrado
+  // Modal Gestión
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
@@ -364,14 +382,28 @@
     cargarAgendaSemanal();
   }
 
-  async function eliminarCitaActual() {
+  // Confirmación Anulación Integrada
+  function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
-    if (confirm(`¿Estás seguro de que deseas anular la cita de ${citaSeleccionada.cliente_nombre}?`)) {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
-      cerrarModalGestion();
-      cargarAgendaSemanal();
+    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.<br><br>Esta acción eliminará el registro de la agenda.`;
+    document.getElementById('modal-gestionar-cita').style.display = 'none';
+    document.getElementById('modal-confirmar-anulacion').style.display = 'flex';
+  }
+
+  function cerrarModalConfirmarAnulacion() {
+    document.getElementById('modal-confirmar-anulacion').style.display = 'none';
+    if (citaSeleccionada) {
+      document.getElementById('modal-gestionar-cita').style.display = 'flex';
     }
+  }
+
+  async function ejecutarEliminacion() {
+    if (!citaSeleccionada) return;
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
+    document.getElementById('modal-confirmar-anulacion').style.display = 'none';
+    citaSeleccionada = null;
+    cargarAgendaSemanal();
   }
 
   function abrirModalManual() { document.getElementById('modal-cita').style.display = 'flex'; }
