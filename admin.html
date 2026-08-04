@@ -50,7 +50,6 @@
     .legend-item { display: inline-flex; align-items: center; margin-right: 15px; margin-bottom: 5px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; display: inline-block; }
 
-    /* RECUADRO DE BLOQUEO MANUAL (Bajo la leyenda) */
     .block-manager-box { margin-top: 15px; padding: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 10px; font-family: sans-serif; }
 
     .side-title { font-size: 11px; font-weight: bold; color: #0B1E36; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-family: sans-serif; }
@@ -129,17 +128,20 @@
         <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
       </div>
 
-      <!-- RECUADRO DE BLOQUEO MANUAL EN EL HUECO BLANCO -->
+      <!-- RECUADRO DE BLOQUEO MANUAL CON LAS NUEVAS HORAS -->
       <div class="block-manager-box">
         <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
         <form id="form-bloqueo" onsubmit="guardarBloqueo(event)" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:center;">
           <input type="date" id="blk_fecha" required style="margin:0; padding:6px; font-size:12px;">
           <select id="blk_hora" style="margin:0; padding:6px; font-size:12px;">
             <option value="ALL">Día Completo</option>
+            <option value="09:00">09:00 h</option>
             <option value="10:00">10:00 h</option>
-            <option value="16:00">16:00 h</option>
-            <option value="18:30">18:30 h</option>
-            <option value="19:30">19:30 h</option>
+            <option value="11:00">11:00 h</option>
+            <option value="12:00">12:00 h</option>
+            <option value="17:00">17:00 h</option>
+            <option value="18:00">18:00 h</option>
+            <option value="19:00">19:00 h</option>
           </select>
           <input type="text" id="blk_motivo" placeholder="Motivo (Ej. Médico)" style="margin:0; padding:6px; font-size:12px;">
           <button type="submit" class="btn btn-gold" style="padding:7px 12px; font-size:11px;">+ Bloquear</button>
@@ -391,12 +393,10 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // Consultar Citas, Bonos y Bloqueos
       const { data: citas } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]).order('hora', { ascending: true });
       const { data: bonos } = await supabase.from('bonos').select('*');
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
 
-      // Map para saber si un bono está 100% pagado por teléfono
       const bonosPagadosMap = {};
       if (bonos) {
         bonos.forEach(b => {
@@ -408,7 +408,6 @@
         });
       }
 
-      // 1. Dibujar Bloqueos Manuales en la agenda
       if (bloqueos && bloqueos.length > 0) {
         bloqueos.forEach(blk => {
           const indexCol = fechasSemana.indexOf(blk.fecha);
@@ -426,24 +425,21 @@
         });
       }
 
-      // 2. Dibujar Citas (Con color VERDE automático para bonos 100% pagados)
       if (citas && citas.length > 0) {
         citas.forEach(cita => {
           const indexCol = fechasSemana.indexOf(cita.fecha);
           if (indexCol !== -1) {
             const col = document.getElementById(`col-${indexCol}`);
-            
-            // SI ES BONO Y ESTÁ 100% PAGADO EN LA TABLA BONOS -> MOSTRAR EN VERDE AUTOMÁTICAMENTE
             const esBonoPagado100 = (cita.servicio_id === 2 || cita.estado === 'bono') && bonosPagadosMap[cita.cliente_telefono];
 
             let chipClass = 'chip-pendiente';
             let estadoEtiqueta = cita.estado ? cita.estado.toUpperCase() : 'PENDIENTE';
 
             if (cita.estado === 'pagado' || esBonoPagado100) {
-              chipClass = 'chip-pagado'; // VERDE
+              chipClass = 'chip-pagado';
               if (esBonoPagado100) estadoEtiqueta = 'BONO PAGADO';
             } else if (cita.estado === 'bono') {
-              chipClass = 'chip-bono'; // MORADO
+              chipClass = 'chip-bono';
             }
 
             const precioTexto = cita.servicio_id === 2 ? 'Bono' : '35€';
@@ -462,7 +458,6 @@
     cargarBloqueosLista();
   }
 
-  // GESTIÓN DE BLOQUEOS MANUALES
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -513,7 +508,6 @@
     cargarAgendaSemanal();
   }
 
-  // GESTOR DE BONOS CON CONTROL DE PAGOS
   function actualizarPrecioPredeterminado() {
     const ses = document.getElementById('b_sesiones').value;
     document.getElementById('b_pagado_hoy').value = (ses === "5") ? 140 : 90;
