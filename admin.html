@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>María Durán - Agenda Semanal Panel de Gestión</title>
+
+  <!-- Configuración PWA / App Instalable -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0B1E36">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="María Durán">
+  <link rel="apple-touch-icon" href="logo.jpg">
+
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; }
@@ -11,8 +21,7 @@
 
     .brand-header { display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border-radius: 12px; padding: 12px 20px; border: 1px solid #E2DBCF; box-shadow: 0 4px 15px rgba(11, 30, 54, 0.05); margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
     .logo-container { text-align: center; flex: 1; min-width: 200px; }
-    .logo-title { font-size: 22px; font-weight: bold; color: #0B1E36; letter-spacing: 4px; margin: 0; }
-    .logo-subtitle { font-size: 9px; color: #B89047; letter-spacing: 5px; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+    .header-admin-logo { max-height: 50px; width: auto; vertical-align: middle; }
     .badge-pwa { background-color: #0B1E36; color: #F6F3ED; font-size: 10px; padding: 6px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #B89047; }
 
     .main-grid { display: grid; grid-template-columns: 1fr 360px; gap: 15px; }
@@ -83,8 +92,7 @@
 
   <div class="brand-header">
     <div class="logo-container">
-      <h1 class="logo-title">MARÍA DURÁN</h1>
-      <div class="logo-subtitle">— QUIROMASAJISTA —</div>
+      <img src="logo.jpg" alt="María Durán" class="header-admin-logo" onerror="this.style.display='none'">
     </div>
     <div class="badge-pwa">PANEL DE GESTIÓN</div>
   </div>
@@ -128,7 +136,6 @@
         <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
       </div>
 
-      <!-- RECUADRO DE BLOQUEO MANUAL CON TODAS LAS HORAS -->
       <div class="block-manager-box">
         <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
         <form id="form-bloqueo" onsubmit="guardarBloqueo(event)" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:center;">
