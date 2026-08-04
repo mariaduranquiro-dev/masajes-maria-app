@@ -31,7 +31,6 @@
       overflow: hidden;
     }
 
-    /* EFECTO MARCA DE AGUA DIFUMINADA CENTRADA EN 'DÍA Y HORA' */
     .app-container::before {
       content: "";
       position: absolute;
@@ -178,7 +177,6 @@
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   
-  // Horarios completos de Mañana (09:00 a 13:00) y Tarde (17:00 a 20:00)
   const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
 
   function selectService(element, id) {
@@ -196,7 +194,6 @@
   function cerrarModalExito() { document.getElementById('modal-exito').style.display = 'none'; }
   function cerrarModalError() { document.getElementById('modal-error').style.display = 'none'; }
 
-  // Generación de enlaces para Google Calendar y Apple/Outlook (ICS nativo)
   function prepararEnlacesCalendario(fecha, hora, nombreCliente) {
     const fechaClean = fecha.replace(/-/g, '');
     const horaClean = hora.replace(':', '') + '00';
@@ -207,14 +204,12 @@
     const horaFinStr = String(h).padStart(2, '0') + String(m).padStart(2, '0') + '00';
     const endStr = `${fechaClean}T${horaFinStr}`;
 
-    // 1. Google Calendar URL
     const text = encodeURIComponent("Cita Quiromasaje - María Durán");
     const details = encodeURIComponent(`Cita reservada para ${nombreCliente} en la clínica de María Durán.`);
     const location = encodeURIComponent("Consulta María Durán");
     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
     document.getElementById('link-gcal').href = gCalUrl;
 
-    // 2. Apple / Outlook ICS (Optimizado con Data URI para apertura nativa en iOS/Mac y descarga en Android/PC)
     const icsData = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
@@ -404,9 +399,13 @@
         document.getElementById('error-mensaje').innerText = "Error al guardar cita: " + error.message;
         document.getElementById('modal-error').style.display = 'flex';
       } else {
+        // REGISTRO AUTOMÁTICO EN EL DIRECTORIO PERPETUO DE CLIENTES
+        await supabase.from('clientes').upsert([
+          { telefono: cliente_telefono, nombre: cliente_nombre }
+        ], { onConflict: 'telefono', ignoreDuplicates: true });
+
         document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fecha}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
         
-        // Generar enlaces de calendario dinámicos
         prepararEnlacesCalendario(fecha, horaVal, cliente_nombre);
 
         document.getElementById('modal-exito').style.display = 'flex';
