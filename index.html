@@ -629,7 +629,14 @@
   window.addEventListener('DOMContentLoaded', () => {
     const inputFecha = document.getElementById('fecha');
     const hoyFormatted = new Date().toISOString().split('T')[0];
-    inputFecha.min = hoyFormatted;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminMode = urlParams.get('admin') === 'true';
+
+    if (!isAdminMode) {
+      inputFecha.min = hoyFormatted; // Clientes normales: prohibido fechas pasadas
+    }
+
     inputFecha.value = hoyFormatted;
     inputFecha.addEventListener('change', actualizarHorariosDisponibles);
     actualizarHorariosDisponibles();
@@ -736,7 +743,6 @@
           mensaje: `Nueva reserva de ${cliente_nombre} para el ${fechaEsp} a las ${horaVal} h.`
         }]);
 
-        // SI ESTÁ DENTRO DEL PANEL DE GESTIÓN (IFRAME), CERRAMOS EL MODAL AUTOMÁTICAMENTE
         if (window.parent && typeof window.parent.cerrarModalCitaManual === 'function') {
           window.parent.cerrarModalCitaManual();
           return;
