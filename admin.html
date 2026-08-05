@@ -449,7 +449,7 @@
     </div>
   </div>
 
-  <!-- MODAL: MODIFICAR CITA (ADMIN) -->
+  <!-- MODAL: MODIFICAR CITA (ADMIN) CON VALIDACIÓN DE HUECOS -->
   <div class="modal" id="modal-admin-modificar-cita">
     <div class="modal-content">
       <div class="modal-header">
@@ -1060,7 +1060,7 @@
   }
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
-  // NUEVAS FUNCIONES PARA MODIFICAR CITA DESDE EL PANEL DE MARÍA
+  // MODIFICAR CITA DESDE EL PANEL DE MARÍA CON VALIDACIÓN DE HUECOS OCUPADOS
   function abrirModalAdminModificarCita() {
     if (!citaSeleccionada) return;
     const fechaEsp = formatearFechaEspanol(citaSeleccionada.fecha);
@@ -1085,6 +1085,14 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      // VALIDACIÓN ANTIDOBLE CITA AL MODIFICAR
+      const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', citaSeleccionada.id);
+      if (ocupadas && ocupadas.length > 0) {
+        alert("⚠️ Este día y hora ya están ocupados por otra cita. Por favor, selecciona un horario libre.");
+        return;
+      }
+
       const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaSeleccionada.id);
 
       if (!error) {
