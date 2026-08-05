@@ -39,16 +39,16 @@
 
     .calendar-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     
-    /* 7 COLUMNAS: LUNES A DOMINGO */
+    /* 6 COLUMNAS: LUNES A SÁBADO */
     .calendar-grid { 
       display: grid; 
-      grid-template-columns: repeat(7, 1fr); 
+      grid-template-columns: repeat(6, 1fr); 
       gap: 1px; 
       background-color: #E2DBCF; 
       border: 1px solid #E2DBCF; 
       border-radius: 8px; 
       overflow: hidden; 
-      min-width: 800px; 
+      min-width: 750px; 
       background-image: url('watermark.png');
       background-repeat: no-repeat;
       background-position: center 60%;
@@ -212,7 +212,6 @@
         <div class="day-header" id="th-3">Jueves</div>
         <div class="day-header" id="th-4">Viernes</div>
         <div class="day-header" id="th-5">Sábado</div>
-        <div class="day-header" id="th-6">Domingo</div>
 
         <div class="day-column" id="col-0"></div>
         <div class="day-column" id="col-1"></div>
@@ -220,7 +219,6 @@
         <div class="day-column" id="col-3"></div>
         <div class="day-column" id="col-4"></div>
         <div class="day-column" id="col-5"></div>
-        <div class="day-column" id="col-6"></div>
       </div>
     </div>
 
@@ -314,6 +312,22 @@
         <!-- Se rellena dinámicamente -->
       </div>
       <button class="btn btn-gold" style="width:100%; padding:12px; margin-top:12px;" onclick="limpiarYcerrarAvisos()">Marcar todo como leído y cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: ACCIÓN RÁPIDA EN HUECO LIBRE -->
+  <div class="modal" id="modal-accion-slot">
+    <div class="modal-content" style="max-width: 340px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; border:none; margin-bottom:0;">
+        <span id="slot-accion-titulo">Gestionar Hueco</span>
+      </div>
+      <div style="font-size: 12px; color: #666; font-family: sans-serif; margin-bottom: 20px;" id="slot-accion-sub"></div>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn btn-gold" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionAnadirCita()">✚ Añadir Cita en este Hueco</button>
+        <button class="btn btn-danger" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionBloquearHora()">🚫 Bloquear esta Hora</button>
+        <button class="btn" style="padding: 10px; background: #ECE7DF; color: #333;" onclick="cerrarModalAccionSlot()">Cancelar</button>
+      </div>
     </div>
   </div>
 
@@ -532,6 +546,7 @@
   let clientesGlobalCache = [];
   let clienteTelefonoActual = null;
   let avisosGlobalCache = [];
+  let slotSeleccionadoAdmin = null;
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -681,12 +696,13 @@
     verificarNotificacionesRecientes(false);
   }
 
+  // CALENDARIO DE 6 DÍAS (LUNES A SÁBADO) SIEMPRE EXPANDIDO CON LÍNEA SÓLIDA
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
-    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const fechasSemana = [];
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 6; i++) {
       const diaCurrent = new Date(lunes);
       diaCurrent.setDate(lunes.getDate() + i);
       fechasSemana.push(formatDate(diaCurrent));
@@ -701,9 +717,9 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      const { data: citasSemana } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[6]).order('hora', { ascending: true });
+      const { data: citasSemana } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]).order('hora', { ascending: true });
       const { data: bonos } = await supabase.from('bonos').select('*');
-      const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[6]);
+      const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
 
       const bonosPagadosMap = {};
       if (bonos) {
@@ -716,7 +732,7 @@
         });
       }
 
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 6; i++) {
         const fechaStr = fechasSemana[i];
         const isToday = formatDate(new Date()) === fechaStr;
         const col = document.getElementById(`col-${i}`);
@@ -796,7 +812,7 @@
           } else {
             if (HORARIOS_SLOTS.includes(slotHora)) {
               colHtml += `
-                <div class="slot-empty" onclick="abrirModalCitaManualConFechaHora('${fechaStr}', '${slotHora}')" title="Hueco libre - Click para añadir cita">
+                <div class="slot-empty" onclick="abrirModalAccionSlot('${fechaStr}', '${slotHora}')" title="Gestionar hueco libre">
                   <span class="chip-time">${slotHora}</span>
                   <span style="font-size:9px; opacity:0.8;">Libre ⚪</span>
                 </div>
@@ -815,7 +831,7 @@
 
       if (periodoSelect === 'semana') {
         const domingo = new Date(lunes);
-        domingo.setDate(lunes.getDate() + 6);
+        domingo.setDate(lunes.getDate() + 5);
         startDate = formatDate(lunes);
         endDate = formatDate(domingo);
       } else if (periodoSelect === 'mes') {
@@ -887,6 +903,41 @@
     verificarNotificacionesRecientes(false);
   }
 
+  // FUNCIONES PARA EL MENÚ RÁPIDO EN HUECOS LIBRES
+  function abrirModalAccionSlot(fecha, hora) {
+    slotSeleccionadoAdmin = { fecha, hora };
+    const fechaEsp = formatearFechaEspanol(fecha);
+    document.getElementById('slot-accion-titulo').innerText = `Hueco: ${hora}`;
+    document.getElementById('slot-accion-sub').innerText = `Día ${fechaEsp}. ¿Qué deseas hacer?`;
+    document.getElementById('modal-accion-slot').style.display = 'flex';
+  }
+
+  function cerrarModalAccionSlot() {
+    document.getElementById('modal-accion-slot').style.display = 'none';
+    slotSeleccionadoAdmin = null;
+  }
+
+  function ejecutarAccionAnadirCita() {
+    if (!slotSeleccionadoAdmin) return;
+    const { fecha, hora } = slotSeleccionadoAdmin;
+    cerrarModalAccionSlot();
+    abrirModalCitaManual(fecha, hora);
+  }
+
+  async function ejecutarAccionBloquearHora() {
+    if (!slotSeleccionadoAdmin) return;
+    const { fecha, hora } = slotSeleccionadoAdmin;
+    cerrarModalAccionSlot();
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('bloqueos').insert([{ fecha, hora, motivo: 'Bloqueado por María' }]);
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al bloquear: " + err.message);
+    }
+  }
+
   function abrirModalCitaManual(fechaPrefill = '', horaPrefill = '') { 
     let url = "index.html?admin=true";
     if (fechaPrefill && horaPrefill) {
@@ -894,10 +945,6 @@
     }
     document.getElementById('iframe-cita-manual').src = url;
     document.getElementById('modal-cita-manual').style.display = 'flex'; 
-  }
-
-  function abrirModalCitaManualConFechaHora(fecha, hora) {
-    abrirModalCitaManual(fecha, hora);
   }
 
   function cerrarModalCitaManual() { 
@@ -1130,7 +1177,6 @@
   }
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
-  // MODIFICAR CITA DESDE EL PANEL DE MARÍA CON HORA LIBRE
   function abrirModalAdminModificarCita() {
     if (!citaSeleccionada) return;
     const fechaEsp = formatearFechaEspanol(citaSeleccionada.fecha);
@@ -1198,9 +1244,6 @@
   }
   function cerrarModalConfirmarAnulacion() { document.getElementById('modal-confirmar-anulacion').style.display = 'none'; if (citaSeleccionada) document.getElementById('modal-gestionar-cita').style.display = 'flex'; }
 
-  async function ejcutarEliminacion() {
-    // legacy fallback
-  }
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
