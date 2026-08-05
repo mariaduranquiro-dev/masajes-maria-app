@@ -104,6 +104,31 @@
     }
     .floating-lock:hover { transform: scale(1.08); background-color: #DC2626; }
 
+    /* CAMPANA DE NOTIFICACIONES EN CABECERA */
+    .bell-btn {
+      position: relative;
+      background: #FFFDF9;
+      border: 1px solid #B89047;
+      color: #0B1E36;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .bell-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #DC2626;
+      color: #FFF;
+      font-size: 9px;
+      padding: 2px 5px;
+      border-radius: 50%;
+      font-weight: bold;
+      display: none;
+    }
+
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
     .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 440px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
     .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -131,7 +156,12 @@
       <h1 class="logo-title">MARÍA DURÁN</h1>
       <div class="logo-subtitle">— QUIROMASAJISTA —</div>
     </div>
-    <div class="badge-pwa">PANEL DE GESTIÓN</div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="bell-btn" onclick="abrirModalNotificaciones()" title="Centro de Notificaciones">
+        🔔 <span id="bell-count" class="bell-badge">0</span>
+      </button>
+      <div class="badge-pwa">PANEL DE GESTIÓN</div>
+    </div>
   </div>
 
   <!-- CALENDARIO OCUPANDO TODO EL ANCHO -->
@@ -177,7 +207,7 @@
     </div>
   </div>
 
-  <!-- ACCIONES RÁPIDAS EN EL ORDEN SOLICITADO -->
+  <!-- ACCIONES RÁPIDAS -->
   <div class="card">
     <div class="side-title">Acciones Rápidas (Gestión)</div>
     <div class="actions-grid">
@@ -204,7 +234,7 @@
     </div>
   </div>
 
-  <!-- BLOQUEO MANUAL AL FONDO DE LA PANTALLA -->
+  <!-- BLOQUEO MANUAL AL FONDO -->
   <div class="card">
     <div class="block-manager-box">
       <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
@@ -245,6 +275,23 @@
     </div>
   </div>
 
+  <!-- MODAL: CENTRO DE NOTIFICACIONES -->
+  <div class="modal" id="modal-notificaciones">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <span>🔔 Centro de Notificaciones</span>
+        <button class="btn" onclick="cerrarModalNotificaciones()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <div style="font-size: 12px; font-family: sans-serif; color: #555; margin-bottom: 12px;">
+        Resumen de avisos pendientes de revisión:
+      </div>
+      <div id="contenedor-desglose-notifs" style="max-height: 320px; overflow-y: auto;">
+        <!-- Se rellena dinámicamente -->
+      </div>
+      <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalNotificaciones()">Cerrar</button>
+    </div>
+  </div>
+
   <!-- MODAL: AÑADIR CITA MANUAL (INDEX EMBEBIDO) -->
   <div class="modal" id="modal-cita-manual">
     <div class="modal-content" style="max-width: 460px; padding: 10px;">
@@ -258,7 +305,7 @@
     </div>
   </div>
 
-  <!-- MODAL: RESUMEN ECONÓMICO (CON RANGO DE DÍAS PERSONALIZADO) -->
+  <!-- MODAL: RESUMEN ECONÓMICO -->
   <div class="modal" id="modal-resumen-economico">
     <div class="modal-content" style="max-width: 440px;">
       <div class="modal-header">
@@ -437,11 +484,13 @@
   let bonoPagoSeleccionado = null;
   let clientesGlobalCache = [];
   let clienteTelefonoActual = null;
+  let datosNotificacionesGlobal = { nuevas: [], cancelaciones: [], modificaciones: [] };
 
   function verificarAccesoGuardado() {
     if (localStorage.getItem('admin_durán_auth') === 'true') {
       document.getElementById('modal-login').style.display = 'none';
       cargarAgendaSemanal();
+      verificarNotificacionesRecientes();
     } else {
       document.getElementById('modal-login').style.display = 'flex';
     }
@@ -454,6 +503,7 @@
       document.getElementById('modal-login').style.display = 'none';
       document.getElementById('login-error').style.display = 'none';
       cargarAgendaSemanal();
+      verificarNotificacionesRecientes();
     } else {
       document.getElementById('login-error').style.display = 'block';
     }
@@ -491,13 +541,129 @@
       div.style.display = 'flex';
       if (!document.getElementById('econ_inicio').value) {
         const d = new Date();
-        d.setDate(d.getDate() - 10); // por defecto últimos 10 días
+        d.setDate(d.getDate() - 10);
         document.getElementById('econ_inicio').value = formatDate(d);
         document.getElementById('econ_fin').value = formatDate(new Date());
       }
     } else {
       div.style.display = 'none';
     }
+  }
+
+  // GESTIÓN DE NOTIFICACIONES (NUEVAS, CANCELACIONES, MODIFICACIONES)
+  async function verificarNotificacionesRecientes() {
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const hoy = formatDate(new Date());
+
+      // Nuevas citas pendientes
+      const { data: nuevas } = await supabase.from('citas').select('*').eq('estado', 'pendiente').gte('fecha', hoy);
+      // Cancelaciones
+      const { data: canceladas } = await supabase.from('citas').select('*').eq('estado', 'cancelada');
+      // Modificaciones
+      const { data: modificadas } = await supabase.from('citas').select('*').eq('estado', 'modificada');
+
+      datosNotificacionesGlobal.nuevas = nuevas || [];
+      datosNotificacionesGlobal.cancelaciones = canceladas || [];
+      datosNotificacionesGlobal.modificaciones = modificadas || [];
+
+      const totalNotifs = datosNotificacionesGlobal.nuevas.length + datosNotificacionesGlobal.cancelaciones.length + datosNotificacionesGlobal.modificaciones.length;
+      
+      const badge = document.getElementById('bell-count');
+      if (totalNotifs > 0) {
+        badge.innerText = totalNotifs;
+        badge.style.display = 'inline-block';
+        // Si es la primera vez que abre sesión y hay notificaciones, mostrar modal automáticamente
+        if (!localStorage.getItem('notifs_vistas_sesion')) {
+          abrirModalNotificaciones();
+          localStorage.setItem('notifs_vistas_sesion', 'true');
+        }
+      } else {
+        badge.style.display = 'none';
+      }
+    } catch (err) {
+      console.error("Error verificando notificaciones:", err);
+    }
+  }
+
+  function abrirModalNotificaciones() {
+    const container = document.getElementById('contenedor-desglose-notifs');
+    const { nuevas, cancelaciones, modificaciones } = datosNotificacionesGlobal;
+
+    if (nuevas.length === 0 && cancelaciones.length === 0 && modificaciones.length === 0) {
+      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">No hay notificaciones pendientes. ¡Todo al día! 🎉</div>';
+      document.getElementById('modal-notificaciones').style.display = 'flex';
+      return;
+    }
+
+    let html = '';
+
+    // 1. NUEVAS CITAS
+    if (nuevas.length > 0) {
+      html += `<div style="margin-bottom:12px;"><strong style="color:#B89047; font-size:12px;">✨ Nuevas Citas (${nuevas.length})</strong>`;
+      nuevas.forEach(c => {
+        html += `<div style="background:#FEF3C7; border:1px solid #F59E0B; padding:8px; border-radius:6px; margin-top:4px; font-size:11px;">
+          <b>${c.cliente_nombre}</b> (${c.cliente_telefono})<br>
+          📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // 2. MODIFICACIONES
+    if (modificaciones.length > 0) {
+      html += `<div style="margin-bottom:12px;"><strong style="color:#9333EA; font-size:12px;">✏️ Citas Modificadas por Clientes (${modificaciones.length})</strong>`;
+      modificaciones.forEach(c => {
+        html += `<div style="background:#F3E8FD; border:1px solid #D8B4FE; padding:8px; border-radius:6px; margin-top:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <b>${c.cliente_nombre}</b><br>
+            📅 Nueva fecha: <b>${c.fecha} (${c.hora.substring(0,5)} h)</b>
+          </div>
+          <button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="resolverModificacion(${c.id})">✓ Entendido</button>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // 3. CANCELACIONES
+    if (cancelaciones.length > 0) {
+      html += `<div style="margin-bottom:12px;"><strong style="color:#DC2626; font-size:12px;">🗑 Cancelaciones (${cancelaciones.length})</strong>`;
+      cancelaciones.forEach(c => {
+        html += `<div style="background:#FEE2E2; border:1px solid #FCA5A5; padding:8px; border-radius:6px; margin-top:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <b>${c.cliente_nombre}</b> (${c.cliente_telefono})<br>
+            Cita del ${c.fecha} a las ${c.hora.substring(0,5)} h
+          </div>
+          <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="borrarAvisoCancelacion(${c.id})">✕ Borrar</button>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    container.innerHTML = html;
+    document.getElementById('modal-notificaciones').style.display = 'flex';
+  }
+
+  function cerrarModalNotificaciones() {
+    document.getElementById('modal-notificaciones').style.display = 'none';
+  }
+
+  async function resolverModificacion(idCita) {
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Cambiar estado a 'pendiente' o 'pagado' para quitar la alerta
+    await supabase.from('citas').update({ estado: 'pendiente' }).eq('id', idCita);
+    cerrarModalNotificaciones();
+    cargarAgendaSemanal();
+    verificarNotificacionesRecientes();
+  }
+
+  async function borrarAvisoCancelacion(idCita) {
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Borrar definitivamente la cita cancelada de la base de datos
+    await supabase.from('citas').delete().eq('id', idCita);
+    cerrarModalNotificaciones();
+    cargarAgendaSemanal();
+    verificarNotificacionesRecientes();
   }
 
   async function cargarAgendaSemanal() {
@@ -555,6 +721,9 @@
 
       if (citasSemana && citasSemana.length > 0) {
         citasSemana.forEach(cita => {
+          // No mostrar en la agenda semanal las que estén canceladas
+          if (cita.estado === 'cancelada') return;
+
           const indexCol = fechasSemana.indexOf(cita.fecha);
           if (indexCol !== -1) {
             const col = document.getElementById(`col-${indexCol}`);
@@ -568,6 +737,9 @@
               if (esBonoPagado100) estadoEtiqueta = 'BONO PAGADO';
             } else if (cita.estado === 'bono') {
               chipClass = 'chip-bono';
+            } else if (cita.estado === 'modificada') {
+              chipClass = 'chip-pendiente';
+              estadoEtiqueta = 'MODIFICADA';
             }
 
             const precioTexto = cita.servicio_id === 2 ? 'Bono' : '35€';
