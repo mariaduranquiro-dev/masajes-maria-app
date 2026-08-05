@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS (CON EDICIÓN MANUAL, FECHA DE PAGO Y ELIMINAR BONO) -->
+  <!-- GESTOR DE BONOS -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -558,11 +558,15 @@
   }
 
   function verificarAccesoGuardado() {
-    if (localStorage.getItem('admin_durán_auth') === 'true') {
-      document.getElementById('modal-login').style.display = 'none';
-      cargarAgendaSemanal();
-      verificarNotificacionesRecientes(true);
-    } else {
+    try {
+      if (localStorage.getItem('admin_durán_auth') === 'true') {
+        document.getElementById('modal-login').style.display = 'none';
+        cargarAgendaSemanal();
+        verificarNotificacionesRecientes(true);
+      } else {
+        document.getElementById('modal-login').style.display = 'flex';
+      }
+    } catch (e) {
       document.getElementById('modal-login').style.display = 'flex';
     }
   }
@@ -570,7 +574,9 @@
   function validarAcceso(e) {
     e.preventDefault();
     if (document.getElementById('pin-input').value === PIN_ACCESO) {
-      localStorage.setItem('admin_durán_auth', 'true');
+      try {
+        localStorage.setItem('admin_durán_auth', 'true');
+      } catch (err) {}
       document.getElementById('modal-login').style.display = 'none';
       document.getElementById('login-error').style.display = 'none';
       cargarAgendaSemanal();
@@ -581,7 +587,9 @@
   }
 
   function cerrarSesion() {
-    localStorage.removeItem('admin_durán_auth');
+    try {
+      localStorage.removeItem('admin_durán_auth');
+    } catch (err) {}
     document.getElementById('pin-input').value = '';
     document.getElementById('modal-login').style.display = 'flex';
   }
@@ -1012,7 +1020,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
