@@ -443,11 +443,10 @@
         }
       }
 
-      // BORRA AUTOMÁTICAMENTE LA CITA DE LA BASE DE DATOS PARA LIBERAR EL HUECO
+      // BORRA AUTOMÁTICAMENTE LA CITA DE LA BASE DE DATOS
       const { error } = await supabase.from('citas').delete().eq('id', idCita);
 
       if (!error) {
-        // REGISTRA EL AVISO INFORMATIVO PARA MARÍA
         await supabase.from('avisos_admin').insert([{
           tipo: 'cancelacion',
           mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaCita} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
@@ -533,6 +532,7 @@
     iCalLink.setAttribute('download', `cita-maria-duran-${fecha}.ics`);
   }
 
+  // --- FILTRADO INTELIGENTE DE HORAS PASADAS HOY ---
   async function actualizarHorariosDisponibles() {
     const fechaVal = document.getElementById('fecha').value;
     const container = document.getElementById('time-slots');
@@ -578,7 +578,22 @@
     container.innerHTML = '';
     let seleccionAutoHecha = false;
 
+    // COMPROBACIÓN DE HORA ACTUAL SI ES HOY
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const esHoy = (fechaVal === hoyStr);
+    const ahora = new Date();
+    const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
+
     HORARIOS_ESTANDAR.forEach(horaStr => {
+      // Parsear hora del slot (ej: '11:00')
+      const [h, m] = horaStr.split(':').map(Number);
+      const slotMinutos = h * 60 + m;
+
+      // SI ES HOY Y LA HORA YA HA PASADO, SE OCULTA AUTOMÁTICAMENTE
+      if (esHoy && slotMinutos <= horaActualMinutos) {
+        return; 
+      }
+
       const estaOcupado = horasOcupadas.includes(horaStr);
       const chip = document.createElement('div');
       if (estaOcupado) {
@@ -707,7 +722,6 @@
           { telefono: cliente_telefono, nombre: cliente_nombre }
         ], { onConflict: 'telefono', ignoreDuplicates: true });
 
-        // REGISTRA EL AVISO DE NUEVA CITA
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
           mensaje: `Nueva reserva de ${cliente_nombre} para el ${fecha} a las ${horaVal} h.`
