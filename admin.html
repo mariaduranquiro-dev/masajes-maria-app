@@ -39,15 +39,16 @@
 
     .calendar-scroll-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     
+    /* 7 COLUMNAS: LUNES A DOMINGO */
     .calendar-grid { 
       display: grid; 
-      grid-template-columns: repeat(6, 1fr); 
+      grid-template-columns: repeat(7, 1fr); 
       gap: 1px; 
       background-color: #E2DBCF; 
       border: 1px solid #E2DBCF; 
       border-radius: 8px; 
       overflow: hidden; 
-      min-width: 650px; 
+      min-width: 800px; 
       background-image: url('watermark.png');
       background-repeat: no-repeat;
       background-position: center 60%;
@@ -67,7 +68,7 @@
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; }
 
-    /* ESTILO PARA LOS HUECOS LIBRES EXPANDIDOS */
+    /* HUECOS LIBRES EXPANDIDOS */
     .slot-empty {
       background: #FFFFFF;
       border: 1px dashed #D1C7B7;
@@ -211,6 +212,7 @@
         <div class="day-header" id="th-3">Jueves</div>
         <div class="day-header" id="th-4">Viernes</div>
         <div class="day-header" id="th-5">Sábado</div>
+        <div class="day-header" id="th-6">Domingo</div>
 
         <div class="day-column" id="col-0"></div>
         <div class="day-column" id="col-1"></div>
@@ -218,6 +220,7 @@
         <div class="day-column" id="col-3"></div>
         <div class="day-column" id="col-4"></div>
         <div class="day-column" id="col-5"></div>
+        <div class="day-column" id="col-6"></div>
       </div>
     </div>
 
@@ -471,7 +474,7 @@
     </div>
   </div>
 
-  <!-- MODAL: MODIFICAR CITA (ADMIN) CON VALIDACIÓN DE HUECOS -->
+  <!-- MODAL: MODIFICAR CITA (ADMIN) -->
   <div class="modal" id="modal-admin-modificar-cita">
     <div class="modal-content">
       <div class="modal-header">
@@ -484,17 +487,7 @@
       <input type="date" id="admin_nuevo_fecha">
       
       <label style="text-align:left; font-size:11px; font-weight:bold; color:#0B1E36;">Nueva Hora *</label>
-      <select id="admin_nuevo_hora">
-        <option value="09:00">09:00 h</option>
-        <option value="10:00">10:00 h</option>
-        <option value="11:00">11:00 h</option>
-        <option value="12:00">12:00 h</option>
-        <option value="13:00">13:00 h</option>
-        <option value="17:00">17:00 h</option>
-        <option value="18:00">18:00 h</option>
-        <option value="19:00">19:00 h</option>
-        <option value="20:00">20:00 h</option>
-      </select>
+      <input type="time" id="admin_nuevo_hora" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #D1C7B7; border-radius:6px; font-size:14px;">
 
       <button class="btn btn-gold" style="width:100%; padding:12px; margin-top:10px;" onclick="ejecutarAdminModificacionCita()">Guardar Cambios</button>
       <button class="btn" style="width:100%; padding:8px; margin-top:6px; background:#ECE7DF; color:#333;" onclick="cerrarModalAdminModificarCita()">Cancelar</button>
@@ -688,13 +681,13 @@
     verificarNotificacionesRecientes(false);
   }
 
-  // CALENDARIO SIEMPRE EXPANDIDO CON HUECOS FIJOS
+  // CALENDARIO DE 7 DÍAS (LUNES A DOMINGO) SIEMPRE EXPANDIDO
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
-    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const fechasSemana = [];
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       const diaCurrent = new Date(lunes);
       diaCurrent.setDate(lunes.getDate() + i);
       fechasSemana.push(formatDate(diaCurrent));
@@ -709,9 +702,9 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      const { data: citasSemana } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]).order('hora', { ascending: true });
+      const { data: citasSemana } = await supabase.from('citas').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[6]).order('hora', { ascending: true });
       const { data: bonos } = await supabase.from('bonos').select('*');
-      const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
+      const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[6]);
 
       const bonosPagadosMap = {};
       if (bonos) {
@@ -724,22 +717,40 @@
         });
       }
 
-      // RENDERIZAR CADA COLUMNA CON SU ESTRUCTURA FIJA DE HORAS (09:00 - 13:00 y 17:00 - 20:00)
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 7; i++) {
         const fechaStr = fechasSemana[i];
         const isToday = formatDate(new Date()) === fechaStr;
         const col = document.getElementById(`col-${i}`);
         
         let colHtml = `<div class="day-num ${isToday ? 'today' : ''}">${new Date(fechaStr).getDate()} ${isToday ? '★' : ''}</div>`;
 
-        // Ver si el día entero está bloqueado
         let diaBloqueadoCompleto = false;
         let bloqueosDelDia = bloqueos ? bloqueos.filter(b => b.fecha === fechaStr) : [];
         if (bloqueosDelDia.some(b => !b.hora || b.hora === 'ALL')) {
           diaBloqueadoCompleto = true;
         }
 
-        HORARIOS_SLOTS.forEach(slotHora => {
+        // Recopilar todas las horas a mostrar: slots estándar + cualquier hora personalizada que tenga cita/bloqueo
+        let horasDelDia = [...HORARIOS_SLOTS];
+        if (citasSemana) {
+          citasSemana.filter(c => c.fecha === fechaStr).forEach(c => {
+            const hCita = c.hora.substring(0,5);
+            if (!horasDelDia.includes(hCita)) horasDelDia.push(hCita);
+          });
+        }
+        if (bloqueosDelDia) {
+          bloqueosDelDia.forEach(b => {
+            if (b.hora && b.hora !== 'ALL') {
+              const hBlk = b.hora.substring(0,5);
+              if (!horasDelDia.includes(hBlk)) horasDelDia.push(hBlk);
+            }
+          });
+        }
+
+        // Ordenar cronológicamente
+        horasDelDia.sort();
+
+        horasDelDia.forEach(slotHora => {
           if (diaBloqueadoCompleto) {
             colHtml += `
               <div class="chip chip-bloqueo">
@@ -751,7 +762,6 @@
             return;
           }
 
-          // Verificar si hay bloqueo específico en esta hora
           const bloqueoHora = bloqueosDelDia.find(b => b.hora && b.hora.substring(0,5) === slotHora);
           if (bloqueoHora) {
             colHtml += `
@@ -764,7 +774,6 @@
             return;
           }
 
-          // Verificar si hay cita en este slot
           const citaEnSlot = citasSemana ? citasSemana.find(c => c.fecha === fechaStr && c.hora.substring(0,5) === slotHora) : null;
 
           if (citaEnSlot) {
@@ -788,13 +797,15 @@
               </div>
             `;
           } else {
-            // HUECO LIBRE VISIBLE
-            colHtml += `
-              <div class="slot-empty" onclick="abrirModalCitaManualConFechaHora('${fechaStr}', '${slotHora}')" title="Hueco libre - Click para añadir cita">
-                <span class="chip-time">${slotHora}</span>
-                <span style="font-size:9px; opacity:0.8;">Libre ⚪</span>
-              </div>
-            `;
+            // Mostrar hueco libre solo para horas estándar o si el usuario quiere
+            if (HORARIOS_SLOTS.includes(slotHora)) {
+              colHtml += `
+                <div class="slot-empty" onclick="abrirModalCitaManualConFechaHora('${fechaStr}', '${slotHora}')" title="Hueco libre - Click para añadir cita">
+                  <span class="chip-time">${slotHora}</span>
+                  <span style="font-size:9px; opacity:0.8;">Libre ⚪</span>
+                </div>
+              `;
+            }
           }
         });
 
@@ -808,7 +819,7 @@
 
       if (periodoSelect === 'semana') {
         const domingo = new Date(lunes);
-        domingo.setDate(lunes.getDate() + 5);
+        domingo.setDate(lunes.getDate() + 6);
         startDate = formatDate(lunes);
         endDate = formatDate(domingo);
       } else if (periodoSelect === 'mes') {
@@ -1149,7 +1160,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // VALIDACIÓN ANTIDOBLE CITA AL MODIFICAR
       const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', citaSeleccionada.id);
       if (ocupadas && ocupadas.length > 0) {
         alert("⚠️ Este día y hora ya están ocupados por otra cita. Por favor, selecciona un horario libre.");
