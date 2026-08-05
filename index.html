@@ -332,7 +332,6 @@
   }
   function cerrarModalNotif() { document.getElementById('modal-notif').style.display = 'none'; }
 
-  // Modales cliente
   function abrirModalConsultaCitas() { document.getElementById('busq-tel-citas').value = ''; document.getElementById('lista-citas-cliente').innerHTML = ''; document.getElementById('modal-gestionar-citas').style.display = 'flex'; }
   function cerrarModalGestionarCitas() { document.getElementById('modal-gestionar-citas').style.display = 'none'; }
 
@@ -362,7 +361,7 @@
           📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h<br>
           <div style="display:flex; gap:6px; margin-top:8px;">
             <button class="btn" style="background:#0B1E36; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="iniciarModificacionCita(${c.id}, '${c.fecha}', '${c.hora}')">✏️ Modificar</button>
-            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="confirmarAnularCita(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id})">🗑 Anular</button>
+            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="confirmarAnularCita(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}')">🗑 Anular</button>
           </div>
         </div>`;
       });
@@ -393,10 +392,22 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      // Marcamos la cita como 'modificada' para que María reciba la notificación
+      
+      // 1. Obtener los datos de la cita antes de modificarla para el registro de avisos
+      const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', citaEnEdicionId).single();
+
+      // 2. Actualizar la cita con nueva fecha/hora y marcar estado 'modificada'
       const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora, estado: 'modificada' }).eq('id', citaEnEdicionId);
 
       if (!error) {
+        // 3. Registrar el aviso en la tabla de notificaciones para María
+        if (citaAntigua) {
+          await supabase.from('avisos_admin').insert([{
+            tipo: 'modificacion',
+            mensaje: `El cliente ${citaAntigua.cliente_nombre} ha modificado su cita al ${nuevaFecha} a las ${nuevaHora.substring(0,5)} h.`
+          }]);
+        }
+
         cerrarModalModificarCita();
         cerrarModalGestionarCitas();
         mostrarAviso("¡Modificación Exitosa!", "Tu cita ha sido actualizada correctamente.", true);
@@ -408,8 +419,8 @@
     }
   }
 
-  function confirmarAnularCita(idCita, estadoCita, telefonoCliente, servicioId) {
-    citaParaAnular = { idCita, estadoCita, telefonoCliente, servicioId };
+  function confirmarAnularCita(idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita) {
+    citaParaAnular = { idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita };
     document.getElementById('modal-gestionar-citas').style.display = 'none';
     document.getElementById('modal-conf-anular').style.display = 'flex';
   }
@@ -421,7 +432,7 @@
 
   async function ejecutarAnulacionCita() {
     if (!citaParaAnular) return;
-    const { idCita, estadoCita, telefonoCliente, servicioId } = citaParaAnular;
+    const { idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita } = citaParaAnular;
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -437,12 +448,20 @@
         }
       }
 
-      // En lugar de borrarla inmediatamente, la marcamos como 'cancelada' para que María tenga constancia en su panel de notificaciones
-      const { error } = await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', idCita);
-      cerrarModalConfAnular();
+      // 1. Borrar la cita de la base de datos para que el hueco quede libre al instante
+      const { error } = await supabase.from('citas').delete().eq('id', idCita);
+
       if (!error) {
-        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha notificado a la clínica.", true);
+        // 2. Registrar el aviso para que María sepa que se canceló
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'cancelacion',
+          mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaCita} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
+        }]);
+
+        cerrarModalConfAnular();
+        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha liberado el hueco.", true);
       } else {
+        cerrarModalConfAnular();
         mostrarAviso("Atención", "Error al anular: " + error.message, false);
       }
     } catch (err) {
@@ -664,7 +683,6 @@
 
         const bonoActual = bonosActivos[0];
         const deTotales = bonoActual.sesiones_totales || 3;
-        camp = bonoActual.sesiones_restantes;
         const nuevasRestantes = bonoActual.sesiones_restantes - 1;
         const pPendiente = (bonoActual.precio_total || 90) - (bonoActual.monto_pagado || 0);
 
@@ -693,6 +711,12 @@
         await supabase.from('clientes').upsert([
           { telefono: cliente_telefono, nombre: cliente_nombre }
         ], { onConflict: 'telefono', ignoreDuplicates: true });
+
+        // Registrar aviso de nueva cita para María
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'nueva',
+          mensaje: `Nueva reserva de ${cliente_nombre} para el ${fecha} a las ${horaVal} h.`
+        }]);
 
         document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fecha}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
         
