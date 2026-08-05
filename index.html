@@ -392,15 +392,11 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
-      // 1. Obtener los datos de la cita antes de modificarla para el registro de avisos
       const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', citaEnEdicionId).single();
 
-      // 2. Actualizar la cita con nueva fecha/hora y marcar estado 'modificada'
-      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora, estado: 'modificada' }).eq('id', citaEnEdicionId);
+      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
 
       if (!error) {
-        // 3. Registrar el aviso en la tabla de notificaciones para María
         if (citaAntigua) {
           await supabase.from('avisos_admin').insert([{
             tipo: 'modificacion',
@@ -437,7 +433,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // Si era de bono, devolver sesión
       if (estadoCita === 'bono' || servicioId === 2) {
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
         if (bonos && bonos.length > 0) {
@@ -448,11 +443,11 @@
         }
       }
 
-      // 1. Borrar la cita de la base de datos para que el hueco quede libre al instante
+      // BORRA AUTOMÁTICAMENTE LA CITA DE LA BASE DE DATOS PARA LIBERAR EL HUECO
       const { error } = await supabase.from('citas').delete().eq('id', idCita);
 
       if (!error) {
-        // 2. Registrar el aviso para que María sepa que se canceló
+        // REGISTRA EL AVISO INFORMATIVO PARA MARÍA
         await supabase.from('avisos_admin').insert([{
           tipo: 'cancelacion',
           mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaCita} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
@@ -712,7 +707,7 @@
           { telefono: cliente_telefono, nombre: cliente_nombre }
         ], { onConflict: 'telefono', ignoreDuplicates: true });
 
-        // Registrar aviso de nueva cita para María
+        // REGISTRA EL AVISO DE NUEVA CITA
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
           mensaje: `Nueva reserva de ${cliente_nombre} para el ${fecha} a las ${horaVal} h.`
