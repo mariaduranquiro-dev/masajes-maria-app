@@ -405,7 +405,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // VALIDACIÓN ANTIDOBLE CITA
       const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', citaEnEdicionId);
       if (ocupadas && ocupadas.length > 0) {
         mostrarAviso("Atención", "El horario seleccionado ya está ocupado por otra cita. Por favor, elige otro.", false);
@@ -605,7 +604,6 @@
       const [h, m] = horaStr.split(':').map(Number);
       const slotMinutos = h * 60 + m;
 
-      // Si es hoy, ocultar horas pasadas solo para clientes normales (si es admin, permitimos rellenar histórico)
       const urlParams = new URLSearchParams(window.location.search);
       const isAdminMode = urlParams.get('admin') === 'true';
 
@@ -643,14 +641,25 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const isAdminMode = urlParams.get('admin') === 'true';
+    const prefillFecha = urlParams.get('fecha');
+    const prefillHora = urlParams.get('hora');
 
     if (!isAdminMode) {
       inputFecha.min = hoyFormatted; 
     }
 
-    inputFecha.value = hoyFormatted;
+    inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
     inputFecha.addEventListener('change', actualizarHorariosDisponibles);
-    actualizarHorariosDisponibles();
+    actualizarHorariosDisponibles().then(() => {
+      if (prefillHora) {
+        const chips = document.querySelectorAll('#time-slots .time-chip');
+        chips.forEach(chip => {
+          if (chip.innerText.startsWith(prefillHora)) {
+            chip.click();
+          }
+        });
+      }
+    });
   });
 
   document.getElementById('booking-form').addEventListener('submit', async function(e) {
@@ -675,7 +684,6 @@
       const nota = document.getElementById('nota').value;
       const fechaEsp = formatearFechaEspanol(fecha);
 
-      // VALIDACIÓN ANTIDOBLE CITA AL CREAR
       const { data: citasExistentes } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', horaVal);
       if (citasExistentes && citasExistentes.length > 0) {
         document.getElementById('error-mensaje').innerText = "Lo sentimos, este horario ya está ocupado. Por favor, selecciona otro.";
