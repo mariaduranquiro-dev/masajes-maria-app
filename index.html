@@ -727,11 +727,10 @@
         document.getElementById('error-mensaje').innerText = "Error al guardar cita: " + error.message;
         document.getElementById('modal-error').style.display = 'flex';
       } else {
-        await supabase.from('clientes'].upsert([
+        await supabase.from('clientes').upsert([
           { telefono: cliente_telefono, nombre: cliente_nombre }
         ], { onConflict: 'telefono', ignoreDuplicates: true });
 
-        // AVISO CON FECHA EN FORMATO ESPAÑOL DD/MM/AAAA
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
           mensaje: `Nueva reserva de ${cliente_nombre} para el ${fechaEsp} a las ${horaVal} h.`
