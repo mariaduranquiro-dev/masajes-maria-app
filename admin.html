@@ -68,10 +68,10 @@
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; }
 
-    /* HUECOS LIBRES EXPANDIDOS */
+    /* HUECOS LIBRES CON LÍNEA FINA SÓLIDA */
     .slot-empty {
       background: #FFFFFF;
-      border: 1px dashed #D1C7B7;
+      border: 1px solid #E2DBCF;
       border-radius: 5px;
       padding: 6px;
       margin-bottom: 6px;
@@ -681,7 +681,6 @@
     verificarNotificacionesRecientes(false);
   }
 
-  // CALENDARIO DE 7 DÍAS (LUNES A DOMINGO) SIEMPRE EXPANDIDO
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -730,7 +729,6 @@
           diaBloqueadoCompleto = true;
         }
 
-        // Recopilar todas las horas a mostrar: slots estándar + cualquier hora personalizada que tenga cita/bloqueo
         let horasDelDia = [...HORARIOS_SLOTS];
         if (citasSemana) {
           citasSemana.filter(c => c.fecha === fechaStr).forEach(c => {
@@ -747,7 +745,6 @@
           });
         }
 
-        // Ordenar cronológicamente
         horasDelDia.sort();
 
         horasDelDia.forEach(slotHora => {
@@ -797,7 +794,6 @@
               </div>
             `;
           } else {
-            // Mostrar hueco libre solo para horas estándar o si el usuario quiere
             if (HORARIOS_SLOTS.includes(slotHora)) {
               colHtml += `
                 <div class="slot-empty" onclick="abrirModalCitaManualConFechaHora('${fechaStr}', '${slotHora}')" title="Hueco libre - Click para añadir cita">
@@ -1134,7 +1130,7 @@
   }
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
-  // MODIFICAR CITA DESDE EL PANEL DE MARÍA CON VALIDACIÓN DE HUECOS OCUPADOS
+  // MODIFICAR CITA DESDE EL PANEL DE MARÍA CON HORA LIBRE
   function abrirModalAdminModificarCita() {
     if (!citaSeleccionada) return;
     const fechaEsp = formatearFechaEspanol(citaSeleccionada.fecha);
@@ -1202,6 +1198,9 @@
   }
   function cerrarModalConfirmarAnulacion() { document.getElementById('modal-confirmar-anulacion').style.display = 'none'; if (citaSeleccionada) document.getElementById('modal-gestionar-cita').style.display = 'flex'; }
 
+  async function ejcutarEliminacion() {
+    // legacy fallback
+  }
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
