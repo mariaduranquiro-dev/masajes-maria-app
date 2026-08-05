@@ -736,6 +736,12 @@
           mensaje: `Nueva reserva de ${cliente_nombre} para el ${fechaEsp} a las ${horaVal} h.`
         }]);
 
+        // SI ESTÁ DENTRO DEL PANEL DE GESTIÓN (IFRAME), CERRAMOS EL MODAL AUTOMÁTICAMENTE
+        if (window.parent && typeof window.parent.cerrarModalCitaManual === 'function') {
+          window.parent.cerrarModalCitaManual();
+          return;
+        }
+
         document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fechaEsp}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
         
         prepararEnlacesCalendario(fecha, horaVal, cliente_nombre);
