@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS (CON FORMATO DE SESIONES CRECIENTE Y BOTÓN BORRAR) -->
+  <!-- GESTOR DE BONOS -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -466,7 +466,7 @@
     </div>
   </div>
 
-  <!-- MODAL GESTION CITA -->
+  <!-- MODAL GESTION CITA (CON OPCIONES DE BONO 3 Y BONO 5) -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
       <div class="modal-header">
@@ -477,7 +477,8 @@
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
         <button class="btn-status-opt" style="background:#E6F4EA; color:#137333;" onclick="setEstado('pagado')"><span>✓ Marcar como PAGADO (Efectivo/Bizum)</span></button>
-        <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstado('bono')"><span>🎟 Marcar como SESIÓN DE BONO</span></button>
+        <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstadoBono(3)"><span>🎟 Marcar como Bono de 3 Sesiones</span></button>
+        <button class="btn-status-opt" style="background:#E9D5FF; color:#581C87;" onclick="setEstadoBono(5)"><span>🎟 Marcar como Bono de 5 Sesiones</span></button>
         <button class="btn-status-opt" style="background:#FEF3C7; color:#92400E;" onclick="setEstado('pendiente')"><span>⏳ Marcar como PENDIENTE</span></button>
       </div>
       <div style="display:flex; gap:6px; margin-top:15px; border-top:1px solid #E2DBCF; padding-top:12px;">
@@ -1044,7 +1045,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS (FORMATO DE SESIONES CRECIENTE: EJ. 1/3, 2/3...)
+  // GESTOR DE BONOS
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     cargarListaBonos(); 
@@ -1197,7 +1198,7 @@
 
   function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
 
-  // VENTANA DE GESTIÓN DE CITA (MUESTRA FORMATO CRECIENTE DE SESIONES)
+  // VENTANA DE GESTIÓN DE CITA
   async function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
@@ -1275,39 +1276,53 @@
     }
   }
 
-  async function setEstado(nuevoEstado) {
+  // CAMBIAR ESTADO A BONO (PERMITE ELEGIR ENTRE BONO DE 3 O BONO DE 5)
+  async function setEstadoBono(numSesiones) {
     if (!citaSeleccionada) return;
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      if (nuevoEstado === 'bono') {
-        const { data: bonosActivos } = await supabase
-          .from('bonos')
-          .select('*')
-          .eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim())
-          .gt('sesiones_restantes', 0)
-          .order('id', { ascending: true })
-          .limit(1);
+      const { data: bonosActivos } = await supabase
+        .from('bonos')
+        .select('*')
+        .eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim())
+        .gt('sesiones_restantes', 0)
+        .order('id', { ascending: true })
+        .limit(1);
 
-        if (!bonosActivos || bonosActivos.length === 0) {
-          await supabase.from('bonos').insert([{
-            cliente_nombre: citaSeleccionada.cliente_nombre,
-            cliente_telefono: citaSeleccionada.cliente_telefono,
-            sesiones_totales: 3,
-            sesiones_restantes: 2,
-            precio_total: 90,
-            monto_pagado: 0
-          }]);
-        } else {
-          const bonoActual = bonosActivos[0];
-          if (bonoActual.sesiones_restantes > 0) {
-            await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes - 1 }).eq('id', bonoActual.id);
-          }
+      if (!bonosActivos || bonosActivos.length === 0) {
+        const precioTotal = (numSesiones === 5) ? 140 : 90;
+        const restantesIniciales = numSesiones - 1;
+        await supabase.from('bonos').insert([{
+          cliente_nombre: citaSeleccionada.cliente_nombre,
+          cliente_telefono: citaSeleccionada.cliente_telefono,
+          sesiones_totales: numSesiones,
+          sesiones_restantes: restantesIniciales,
+          precio_total: precioTotal,
+          monto_pagado: 0
+        }]);
+      } else {
+        const bonoActual = bonosActivos[0];
+        if (bonoActual.sesiones_restantes > 0) {
+          await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes - 1 }).eq('id', bonoActual.id);
         }
       }
 
-      await supabase.from('citas').update({ estado: nuevoEstado, servicio_id: (nuevoEstado === 'bono' ? 2 : 1) }).eq('id', citaSeleccionada.id);
+      const servicioIdNuevo = (numSesiones === 5) ? 5 : 2;
+      await supabase.from('citas').update({ estado: 'bono', servicio_id: servicioIdNuevo }).eq('id', citaSeleccionada.id);
       
+      cerrarModalGestion();
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al convertir a bono: " + err.message);
+    }
+  }
+
+  async function setEstado(nuevoEstado) {
+    if (!citaSeleccionada) return;
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('citas').update({ estado: nuevoEstado }).eq('id', citaSeleccionada.id);
       cerrarModalGestion();
       cargarAgendaSemanal();
     } catch (err) {
