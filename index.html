@@ -393,7 +393,8 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
+      // Marcamos la cita como 'modificada' para que María reciba la notificación
+      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora, estado: 'modificada' }).eq('id', citaEnEdicionId);
 
       if (!error) {
         cerrarModalModificarCita();
@@ -425,6 +426,7 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+      // Si era de bono, devolver sesión
       if (estadoCita === 'bono' || servicioId === 2) {
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
         if (bonos && bonos.length > 0) {
@@ -435,10 +437,11 @@
         }
       }
 
-      const { error } = await supabase.from('citas').delete().eq('id', idCita);
+      // En lugar de borrarla inmediatamente, la marcamos como 'cancelada' para que María tenga constancia en su panel de notificaciones
+      const { error } = await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', idCita);
       cerrarModalConfAnular();
       if (!error) {
-        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha liberado el hueco.", true);
+        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha notificado a la clínica.", true);
       } else {
         mostrarAviso("Atención", "Error al anular: " + error.message, false);
       }
@@ -457,10 +460,10 @@
     container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando bonos...</div>';
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel).gt('sesiones_restantes', 0);
+      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel);
 
       if (!bonos || bonos.length === 0) {
-        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes bonos activos con saldo con este teléfono.</p>';
+        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes bonos registrados con este teléfono.</p>';
         return;
       }
 
@@ -661,6 +664,7 @@
 
         const bonoActual = bonosActivos[0];
         const deTotales = bonoActual.sesiones_totales || 3;
+        camp = bonoActual.sesiones_restantes;
         const nuevasRestantes = bonoActual.sesiones_restantes - 1;
         const pPendiente = (bonoActual.precio_total || 90) - (bonoActual.monto_pagado || 0);
 
