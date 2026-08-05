@@ -1,0 +1,20 @@
+{
+  "name": "María Durán - Panel de Gestión",
+  "short_name": "Gestión María",
+  "start_url": "admin.html",
+  "display": "standalone",
+  "background_color": "#0B1E36",
+  "theme_color": "#0B1E36",
+  "icons": [
+    {
+      "src": "logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
