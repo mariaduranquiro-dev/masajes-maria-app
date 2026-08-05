@@ -576,19 +576,6 @@
       return;
     }
 
-    if (!isAdminMode) {
-      const hoy = new Date();
-      hoy.setHours(0,0,0,0);
-      const maxFecha = new Date(hoy);
-      maxFecha.setDate(maxFecha.getDate() + 35);
-      
-      if (fechaObj > maxFecha) {
-        document.getElementById('hora').value = '';
-        container.innerHTML = '<div style="font-size:12px; color:#B89047; font-family:sans-serif; width:100%; text-align:center; padding:10px; background:#FFFDF9; border:1px solid #E2DBCF; border-radius:6px;">⚠️ Las reservas solo están permitidas hasta con 5 semanas de antelación.</div>';
-        return;
-      }
-    }
-
     container.innerHTML = '<div style="font-size:12px; color:#666; font-family:sans-serif;">Comprobando disponibilidad...</div>';
     let horasOcupadas = [];
     let diaBloqueadoCompleto = false;
@@ -681,9 +668,6 @@
 
     if (!isAdminMode) {
       inputFecha.min = hoyFormatted; 
-      const maxDate = new Date();
-      maxDate.setDate(maxDate.getDate() + 35);
-      inputFecha.max = formatDate(maxDate);
     }
 
     inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
@@ -716,21 +700,6 @@
       const cliente_telefono = document.getElementById('telefono').value.trim();
       const nota = document.getElementById('nota').value;
       const fechaEsp = formatearFechaEspanol(fecha);
-
-      if (!isAdminMode) {
-        const fechaObj = new Date(fecha + 'T00:00:00');
-        const hoy = new Date();
-        hoy.setHours(0,0,0,0);
-        const maxFecha = new Date(hoy);
-        maxFecha.setDate(maxFecha.getDate() + 35);
-        if (fechaObj > maxFecha) {
-          document.getElementById('error-mensaje').innerText = "Lo sentimos, solo se permiten reservas hasta con 5 semanas de antelación.";
-          document.getElementById('modal-error').style.display = 'flex';
-          btn.disabled = false;
-          btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
-          return;
-        }
-      }
 
       const { data: citasExistentes } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', horaVal);
       if (citasExistentes && citasExistentes.length > 0) {
