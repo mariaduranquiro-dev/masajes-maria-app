@@ -236,7 +236,7 @@
     </div>
   </div>
 
-  <!-- ACCIONES RÁPIDAS (SIN FICHA DE CLIENTES) -->
+  <!-- ACCIONES RÁPIDAS -->
   <div class="card">
     <div class="side-title">Acciones Rápidas (Gestión)</div>
     <div class="actions-grid">
@@ -535,7 +535,7 @@
 <script>
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
-  const PIN_ACCESO = "1234";
+  const PIN_ACCESO = "1616";
 
   const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   let fechaReferencia = new Date();
@@ -1038,16 +1038,6 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  async function guardarNotaCliente() {
-    if (!clienteTelefonoActual) return;
-    const nuevaNota = document.getElementById('textarea-nota-cliente').value.trim();
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      await supabase.from('clientes').update({ notas: nuevaNota }).eq('telefono', clienteTelefonoActual);
-      cerrarModalEditarNota();
-    } catch (err) { alert("Error: " + err.message); }
-  }
-
   async function abrirModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'flex'; cargarListaBonos(); }
   function cerrarModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'none'; }
 
@@ -1154,7 +1144,7 @@
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
     document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
     
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la consulta de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
