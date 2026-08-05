@@ -320,7 +320,6 @@
     return fechaStr;
   }
 
-  // Normalizador robusto de fechas para evitar fallos de formato en diferentes navegadores
   function normalizarFecha(val) {
     if (!val) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
@@ -640,6 +639,9 @@
     const ahora = new Date();
     const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
 
+    let slotsHtml = '<div class="time-slots" id="time-slots">';
+    let haySlotsVisibles = false;
+
     HORARIOS_ESTANDAR.forEach(horaStr => {
       const [h, m] = horaStr.split(':').map(Number);
       const slotMinutos = h * 60 + m;
@@ -648,27 +650,27 @@
         return; 
       }
 
+      haySlotsVisibles = true;
       const estaOcupado = horasOcupadas.includes(horaStr);
-      const chip = document.createElement('div');
       if (estaOcupado) {
-        chip.className = 'time-chip occupied';
-        chip.innerText = horaStr + ' 🔒';
+        slotsHtml += `<div class="time-chip occupied">${horaStr} 🔒</div>`;
       } else {
-        chip.className = 'time-chip';
-        chip.innerText = horaStr;
-        chip.onclick = function() { selectTime(this, horaStr); };
+        const isSel = !seleccionAutoHecha ? 'selected' : '';
         if (!seleccionAutoHecha) {
-          chip.classList.add('selected');
           document.getElementById('hora').value = horaStr;
           seleccionAutoHecha = true;
         }
+        slotsHtml += `<div class="time-chip ${isSel}" onclick="selectTime(this, '${horaStr}')">${horaStr}</div>`;
       }
-      container.appendChild(chip);
     });
 
-    if (!seleccionAutoHecha) {
+    slotsHtml += '</div>';
+
+    if (!haySlotsVisibles || !seleccionAutoHecha) {
       document.getElementById('hora').value = '';
       container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">⚠️ No quedan huecos libres para la fecha seleccionada.</div>';
+    } else {
+      container.innerHTML = slotsHtml;
     }
   }
 
