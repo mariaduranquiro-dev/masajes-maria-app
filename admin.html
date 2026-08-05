@@ -275,20 +275,20 @@
     </div>
   </div>
 
-  <!-- MODAL: CENTRO DE NOTIFICACIONES -->
+  <!-- MODAL: CENTRO DE NOTIFICACIONES (AUTOMÁTICO AL ENTRAR) -->
   <div class="modal" id="modal-notificaciones">
     <div class="modal-content" style="max-width: 440px;">
       <div class="modal-header">
-        <span>🔔 Centro de Notificaciones</span>
+        <span>🔔 Centro de Novedades y Avisos</span>
         <button class="btn" onclick="cerrarModalNotificaciones()" style="background:#ECE7DF;">✕</button>
       </div>
       <div style="font-size: 12px; font-family: sans-serif; color: #555; margin-bottom: 12px;">
-        Avisos recientes de reservas, modificaciones y cancelaciones:
+        Novedades registradas desde tu última visita:
       </div>
       <div id="contenedor-desglose-notifs" style="max-height: 320px; overflow-y: auto;">
         <!-- Se rellena dinámicamente -->
       </div>
-      <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalNotificaciones()">Cerrar</button>
+      <button class="btn btn-gold" style="width:100%; padding:12px; margin-top:12px;" onclick="limpiarYcerrarAvisos()">Marcar todo como leído y cerrar</button>
     </div>
   </div>
 
@@ -442,7 +442,7 @@
       </div>
       <div style="display:flex; gap:8px; margin-top:15px; border-top:1px solid #E2DBCF; padding-top:12px;">
         <button class="btn" style="background:#25D366; color:#FFF; border:none; flex:1; padding:10px;" id="btn-ws-modal">💬 WhatsApp</button>
-        <button class="btn btn-danger" style="padding:10px;" onclick="pedirConfirmacionAnulacion()">🗑 Anular Cita</button>
+        <button class="btn btn-danger" style="padding:10px;" onclick="pedirConfirmacionAnulacion()">🗑 Borrar Cita</button>
       </div>
       <button class="btn" style="width:100%; padding:8px; margin-top:8px; background:#ECE7DF; color:#333;" onclick="cerrarModalGestion()">Cerrar</button>
     </div>
@@ -452,10 +452,10 @@
   <div class="modal" id="modal-confirmar-anulacion">
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
-      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center; justify-content: center;">¿Anular Cita?</div>
+      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center; justify-content: center;">¿Borrar Cita?</div>
       <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;" id="c-mensaje-anulacion"></p>
       <div style="display: flex; gap: 10px;">
-        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Anular Cita</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Borrar Cita</button>
         <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color: #333;" onclick="cerrarModalConfirmarAnulacion()">Cancelar</button>
       </div>
     </div>
@@ -490,7 +490,7 @@
     if (localStorage.getItem('admin_durán_auth') === 'true') {
       document.getElementById('modal-login').style.display = 'none';
       cargarAgendaSemanal();
-      verificarNotificacionesRecientes();
+      verificarNotificacionesRecientes(true); // Abre el modal automáticamente al entrar si hay avisos
     } else {
       document.getElementById('modal-login').style.display = 'flex';
     }
@@ -503,7 +503,7 @@
       document.getElementById('modal-login').style.display = 'none';
       document.getElementById('login-error').style.display = 'none';
       cargarAgendaSemanal();
-      verificarNotificacionesRecientes();
+      verificarNotificacionesRecientes(true);
     } else {
       document.getElementById('login-error').style.display = 'block';
     }
@@ -550,8 +550,8 @@
     }
   }
 
-  // GESTIÓN DE AVISOS Y NOTIFICACIONES
-  async function verificarNotificacionesRecientes() {
+  // GESTIÓN DE AVISOS Y VENTANA EMERGENTE AUTOMÁTICA
+  async function verificarNotificacionesRecientes(abrirAutomatico = false) {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: avisos } = await supabase.from('avisos_admin').select('*').order('id', { ascending: false });
@@ -562,10 +562,8 @@
       if (avisosGlobalCache.length > 0) {
         badge.innerText = avisosGlobalCache.length;
         badge.style.display = 'inline-block';
-        // Mostrar modal automáticamente si hay avisos nuevos en la sesión
-        if (!localStorage.getItem('avisos_vistos')) {
+        if (abrirAutomatico) {
           abrirModalNotificaciones();
-          localStorage.setItem('avisos_vistos', 'true');
         }
       } else {
         badge.style.display = 'none';
@@ -578,7 +576,7 @@
   function abrirModalNotificaciones() {
     const container = document.getElementById('contenedor-desglose-notifs');
     if (avisosGlobalCache.length === 0) {
-      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">No hay avisos pendientes. ¡Todo al día! 🎉</div>';
+      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">No hay nuevos avisos. ¡Todo al día! 🎉</div>';
       document.getElementById('modal-notificaciones').style.display = 'flex';
       return;
     }
@@ -588,6 +586,8 @@
       let bg = '#FEF3C7';
       let border = '#F59E0B';
       let title = '✨ Nuevo Aviso';
+      
+      if (a.tipo === 'nueva') { bg = '#E6F4EA'; border = '#137333'; title = '✨ Nueva Reserva'; }
       if (a.tipo === 'cancelacion') { bg = '#FEE2E2'; border = '#FCA5A5'; title = '🗑 Cita Cancelada'; }
       if (a.tipo === 'modificacion') { bg = '#F3E8FD'; border = '#D8B4FE'; title = '✏️ Cita Modificada'; }
 
@@ -613,8 +613,17 @@
   async function borrarAviso(idAviso) {
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     await supabase.from('avisos_admin').delete().eq('id', idAviso);
+    verificarNotificacionesRecientes(false);
+    abrirModalNotificaciones();
+  }
+
+  async function limpiarYcerrarAvisos() {
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    for (const a of avisosGlobalCache) {
+      await supabase.from('avisos_admin').delete().eq('id', a.id);
+    }
     cerrarModalNotificaciones();
-    verificarNotificacionesRecientes();
+    verificarNotificacionesRecientes(false);
   }
 
   async function cargarAgendaSemanal() {
@@ -685,9 +694,6 @@
               if (esBonoPagado100) estadoEtiqueta = 'BONO PAGADO';
             } else if (cita.estado === 'bono') {
               chipClass = 'chip-bono';
-            } else if (cita.estado === 'modificada') {
-              chipClass = 'chip-pendiente';
-              estadoEtiqueta = 'MODIFICADA';
             }
 
             const precioTexto = cita.servicio_id === 2 ? 'Bono' : '35€';
@@ -778,7 +784,7 @@
     } catch (e) { console.error(e); }
 
     cargarBloqueosLista();
-    verificarNotificacionesRecientes();
+    verificarNotificacionesRecientes(false);
   }
 
   function abrirModalCitaManual() { document.getElementById('modal-cita-manual').style.display = 'flex'; }
@@ -965,7 +971,6 @@
       if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
       let html = '';
       citas.forEach(cita => {
-        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje';
         const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
         html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;"><div><b>${cita.cliente_nombre}</b><br><span style="font-size:11px; color:#555;">📅 ${cita.fecha} • ⏰ ${cita.hora.substring(0,5)} h</span></div><a href="https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}" target="_blank" class="btn" style="background:#25D366; color:#FFF; border:none; text-decoration:none;">💬 Enviar</a></div>`;
       });
@@ -979,7 +984,7 @@
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje (35€)';
     document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${cita.fecha}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán...`);
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la consulta de María Durán...`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
@@ -995,7 +1000,7 @@
 
   function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
-    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.`;
+    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a borrar la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.`;
     document.getElementById('modal-gestionar-cita').style.display = 'none';
     document.getElementById('modal-confirmar-anulacion').style.display = 'flex';
   }
