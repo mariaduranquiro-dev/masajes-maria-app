@@ -65,7 +65,7 @@
     .service-price { color: #B89047; }
     .service-desc { font-size: 11px; color: #666; font-family: sans-serif; }
     
-    input, textarea { width: 100%; padding: 10px; border: 1px solid #D1C7B7; border-radius: 8px; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; background: rgba(255, 255, 255, 0.9); }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #D1C7B7; border-radius: 8px; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; background: rgba(255, 255, 255, 0.9); }
     label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px; color: #0B1E36; font-family: sans-serif; }
     .btn-submit { width: 100%; background-color: #B89047; color: #FFFFFF; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 1px; margin-top: 10px; }
     .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
@@ -75,19 +75,28 @@
     .time-chip.selected { background: #0B1E36; color: #FFFFFF; border-color: #0B1E36; font-weight: bold; }
     .time-chip.occupied { background: #EAEAEA; color: #A0AEC0; border-color: #CBD5E0; cursor: not-allowed; text-decoration: line-through; opacity: 0.7; pointer-events: none; }
 
-    .consulta-link {
-      background: none;
-      border: none;
-      color: #0B1E36;
-      text-decoration: underline;
-      font-size: 11px;
-      cursor: pointer;
-      margin: 12px auto 0 auto;
-      display: block;
-      font-weight: bold;
-      font-family: sans-serif;
+    .client-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
     }
-    .consulta-link:hover { color: #B89047; }
+    .btn-action-client {
+      flex: 1;
+      background: #FFFFFF;
+      border: 1px solid #0B1E36;
+      color: #0B1E36;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    .btn-action-client:hover {
+      background-color: #0B1E36;
+      color: #FFFFFF;
+    }
 
     .footer-legal { 
       margin-top: 15px; 
@@ -102,7 +111,7 @@
     .footer-legal p { margin: 4px 0; }
 
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(2px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 24px; border-radius: 16px; max-width: 380px; width: 100%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; }
+    .modal-content { background: #FFFFFF; padding: 24px; border-radius: 16px; max-width: 380px; width: 100%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
     .modal-icon { font-size: 42px; color: #1e8e3e; margin-bottom: 6px; }
     .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; }
     .modal-desc { font-size: 13px; color: #555; font-family: sans-serif; line-height: 1.4; margin-bottom: 15px; text-align: left; }
@@ -173,7 +182,10 @@
     <button type="submit" class="btn-submit" id="btn-submit">✓ CONFIRMAR CITA (1 CLIC)</button>
   </form>
 
-  <button type="button" class="consulta-link" onclick="abrirModalConsultaCliente()">🔍 ¿Tienes una cita o bono? Consúltalo aquí</button>
+  <div class="client-actions">
+    <button type="button" class="btn-action-client" onclick="abrirModalConsultaCitas()">📅 Gestionar / Anular Cita</button>
+    <button type="button" class="btn-action-client" onclick="abrirModalConsultaBonos()">🎟 Consultar Mis Bonos</button>
+  </div>
 
   <div class="footer-legal">
     <p>⏳ <b>Política de cancelación:</b> Por favor, avísanos con al menos 24h de antelación si necesitas modificar o anular tu cita.</p>
@@ -181,20 +193,62 @@
   </div>
 </div>
 
-<!-- Modal Consulta Cliente (Mis Citas y Bonos) -->
-<div class="modal" id="modal-consultar-cliente">
+<!-- Modal: Gestionar / Anular Citas -->
+<div class="modal" id="modal-gestionar-citas">
   <div class="modal-content">
-    <div class="modal-title">Consultar Citas y Bonos</div>
-    <div class="modal-desc">Introduce tu número de teléfono WhatsApp para ver tus próximas citas programadas y el saldo de tu bono activo.</div>
+    <div class="modal-title">📅 Gestionar Mis Citas</div>
+    <div class="modal-desc">Introduce tu número de teléfono WhatsApp para ver tus citas activas y poder modificarlas o anularlas.</div>
     
-    <label for="consulta-telefono" style="text-align:left;">Tu Teléfono WhatsApp *</label>
-    <input type="tel" id="consulta-telefono" placeholder="Ej. 612345678" required>
+    <label for="busq-tel-citas" style="text-align:left;">Tu Teléfono WhatsApp *</label>
+    <input type="tel" id="busq-tel-citas" placeholder="Ej. 612345678">
+    <button class="btn-modal" onclick="buscarCitasCliente()">Buscar Mis Citas</button>
     
-    <button class="btn-modal" onclick="ejecutarConsultaCliente()">Ver Mis Datos</button>
+    <div id="lista-citas-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
     
-    <div id="resultado-consulta-container" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif; max-height:180px; overflow-y:auto;"></div>
+    <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalGestionarCitas()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal: Modificar Fecha/Hora de Cita -->
+<div class="modal" id="modal-modificar-cita">
+  <div class="modal-content">
+    <div class="modal-title">✏️ Modificar Cita</div>
+    <div class="modal-desc" id="info-cita-modificar"></div>
     
-    <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalConsultaCliente()">Cerrar</button>
+    <label for="nuevo_fecha" style="text-align:left;">Nueva Fecha *</label>
+    <input type="date" id="nuevo_fecha">
+    
+    <label for="nuevo_hora" style="text-align:left;">Nueva Hora *</label>
+    <select id="nuevo_hora">
+      <option value="09:00">09:00 h</option>
+      <option value="10:00">10:00 h</option>
+      <option value="11:00">11:00 h</option>
+      <option value="12:00">12:00 h</option>
+      <option value="13:00">13:00 h</option>
+      <option value="17:00">17:00 h</option>
+      <option value="18:00">18:00 h</option>
+      <option value="19:00">19:00 h</option>
+      <option value="20:00">20:00 h</option>
+    </select>
+
+    <button class="btn-modal" onclick="ejecutarModificacionCita()">Guardar Cambios</button>
+    <button class="btn" style="width:100%; padding:10px; margin-top:8px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalModificarCita()">Volver</button>
+  </div>
+</div>
+
+<!-- Modal: Consultar Bonos -->
+<div class="modal" id="modal-consultar-bonos">
+  <div class="modal-content">
+    <div class="modal-title">🎟 Consultar Mis Bonos</div>
+    <div class="modal-desc">Introduce tu número de teléfono WhatsApp para ver las sesiones restantes de tus bonos activos.</div>
+    
+    <label for="busq-tel-bonos" style="text-align:left;">Tu Teléfono WhatsApp *</label>
+    <input type="tel" id="busq-tel-bonos" placeholder="Ej. 612345678">
+    <button class="btn-modal" onclick="buscarBonosCliente()">Ver Mis Bonos</button>
+    
+    <div id="lista-bonos-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
+    
+    <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalConsultarBonos()">Cerrar</button>
   </div>
 </div>
 
@@ -228,6 +282,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   
   const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+  let citaEnEdicionId = null;
 
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
@@ -244,78 +299,139 @@
   function cerrarModalExito() { document.getElementById('modal-exito').style.display = 'none'; }
   function cerrarModalError() { document.getElementById('modal-error').style.display = 'none'; }
 
-  function abrirModalConsultaCliente() {
-    document.getElementById('consulta-telefono').value = '';
-    document.getElementById('resultado-consulta-container').innerHTML = '';
-    document.getElementById('modal-consultar-cliente').style.display = 'flex';
-  }
+  // Modales cliente
+  function abrirModalConsultaCitas() { document.getElementById('busq-tel-citas').value = ''; document.getElementById('lista-citas-cliente').innerHTML = ''; document.getElementById('modal-gestionar-citas').style.display = 'flex'; }
+  function cerrarModalGestionarCitas() { document.getElementById('modal-gestionar-citas').style.display = 'none'; }
 
-  function cerrarModalConsultaCliente() {
-    document.getElementById('modal-consultar-cliente').style.display = 'none';
-  }
+  function abrirModalConsultarBonos() { document.getElementById('busq-tel-bonos').value = ''; document.getElementById('lista-bonos-cliente').innerHTML = ''; document.getElementById('modal-consultar-bonos').style.display = 'flex'; }
+  function cerrarModalConsultarBonos() { document.getElementById('modal-consultar-bonos').style.display = 'none'; }
 
-  async function ejecutarConsultaCliente() {
-    const tel = document.getElementById('consulta-telefono').value.trim();
-    const container = document.getElementById('resultado-consulta-container');
-    if (!tel) {
-      container.innerHTML = '<span style="color:#DC2626;">Por favor, introduce tu número de teléfono.</span>';
-      return;
-    }
+  async function buscarCitasCliente() {
+    const tel = document.getElementById('busq-tel-citas').value.trim();
+    const container = document.getElementById('lista-citas-cliente');
+    if (!tel) { container.innerHTML = '<span style="color:#DC2626;">Introduce tu teléfono.</span>'; return; }
 
-    container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando tus datos...</div>';
-
+    container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando citas...</div>';
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const hoy = new Date().toISOString().split('T')[0];
+      const { data: citas } = await supabase.from('citas').select('*').eq('cliente_telefono', tel).gte('fecha', hoy).order('fecha', { ascending: true });
 
-      // Buscar citas futuras o de hoy
-      const { data: citas } = await supabase
-        .from('citas')
-        .select('*')
-        .eq('cliente_telefono', tel)
-        .gte('fecha', hoy)
-        .order('fecha', { ascending: true });
-
-      // Buscar bonos con sesiones restantes
-      const { data: bonos } = await supabase
-        .from('bonos')
-        .select('*')
-        .eq('cliente_telefono', tel)
-        .gt('sesiones_restantes', 0);
+      if (!citas || citas.length === 0) {
+        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes citas activas próximas con este teléfono.</p>';
+        return;
+      }
 
       let html = '';
-
-      if (citas && citas.length > 0) {
-        html += '<b style="color:#0B1E36; display:block; margin-bottom:4px;">📅 Tus Próximas Citas:</b>';
-        citas.forEach(c => {
-          const serv = c.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
-          html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; padding:8px; border-radius:6px; margin-bottom:6px;">
-            <b>${c.cliente_nombre}</b><br>
-            📅 ${c.fecha} a las <b>${c.hora.substring(0,5)} h</b><br>
-            💆 ${serv}
-          </div>`;
-        });
-      } else {
-        html += '<p style="color:#666; margin:4px 0;">No tienes ninguna cita próxima registrada con este teléfono.</p>';
-      }
-
-      if (bonos && bonos.length > 0) {
-        html += '<b style="color:#0B1E36; display:block; margin:8px 0 4px 0;">🎟 Tus Bonos Activos:</b>';
-        bonos.forEach(b => {
-          const precioT = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
-          const pagadoT = b.monto_pagado !== undefined ? b.monto_pagado : precioT;
-          const pendiente = precioT - pagadoT;
-          html += `<div style="background:#F3E8FD; border:1px solid #D8B4FE; padding:8px; border-radius:6px; margin-bottom:6px; color:#581C87;">
-            <b>Bono de ${b.sesiones_totales} Sesiones</b><br>
-            • Citas restantes: <b>${b.sesiones_restantes} / ${b.sesiones_totales}</b><br>
-            ${pendiente > 0 ? `• Pendiente de abono: <b style="color:#DC2626;">${pendiente} €</b>` : '• ¡Bono totalmente pagado!'}
-          </div>`;
-        });
-      }
-
+      citas.forEach(c => {
+        html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; padding:10px; border-radius:8px; margin-bottom:8px;">
+          <b>${c.cliente_nombre}</b><br>
+          📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h<br>
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn" style="background:#0B1E36; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="iniciarModificacionCita(${c.id}, '${c.fecha}', '${c.hora}')">✏️ Modificar</button>
+            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="anularCitaCliente(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id})">🗑 Anular</button>
+          </div>
+        </div>`;
+      });
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<span style="color:#DC2626;">Error al consultar: ${err.message}</span>`;
+      container.innerHTML = `<span style="color:#DC2626;">Error: ${err.message}</span>`;
+    }
+  }
+
+  function iniciarModificacionCita(id, fechaActual, horaActual) {
+    citaEnEdicionId = id;
+    document.getElementById('info-cita-modificar').innerHTML = `Modificando la cita del día <b>${fechaActual}</b> a las <b>${horaActual.substring(0,5)} h</b>.`;
+    document.getElementById('nuevo_fecha').value = fechaActual;
+    document.getElementById('nuevo_hora').value = horaActual.substring(0,5);
+    document.getElementById('modal-gestionar-citas').style.display = 'none';
+    document.getElementById('modal-modificar-cita').style.display = 'flex';
+  }
+
+  function cerrarModalModificarCita() {
+    document.getElementById('modal-modificar-cita').style.display = 'none';
+    document.getElementById('modal-gestionar-citas').style.display = 'flex';
+  }
+
+  async function ejecutarModificacionCita() {
+    if (!citaEnEdicionId) return;
+    const nuevaFecha = document.getElementById('nuevo_fecha').value;
+    const nuevaHora = document.getElementById('nuevo_hora').value;
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
+
+      if (!error) {
+        alert("¡Cita modificada con éxito!");
+        cerrarModalModificarCita();
+        cerrarModalGestionarCitas();
+      } else {
+        alert("Error al modificar: " + error.message);
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function anularCitaCliente(idCita, estadoCita, telefonoCliente, servicioId) {
+    if (!confirm("¿Estás seguro de que deseas anular esta cita?")) return;
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // Si era de bono, devolver sesión
+      if (estadoCita === 'bono' || servicioId === 2) {
+        const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
+        if (bonos && bonos.length > 0) {
+          const bonoActual = bonos[0];
+          if (bonoActual.sesiones_restantes < bonoActual.sesiones_totales) {
+            await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes + 1 }).eq('id', bonoActual.id);
+          }
+        }
+      }
+
+      const { error } = await supabase.from('citas').delete().eq('id', idCita);
+      if (!error) {
+        alert("Cita anulada correctamente.");
+        buscarCitasCliente();
+      } else {
+        alert("Error al anular: " + error.message);
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function buscarBonosCliente() {
+    const tel = document.getElementById('busq-tel-bonos').value.trim();
+    const container = document.getElementById('lista-bonos-cliente');
+    if (!tel) { container.innerHTML = '<span style="color:#DC2626;">Introduce tu teléfono.</span>'; return; }
+
+    container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando bonos...</div>';
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel).gt('sesiones_restantes', 0);
+
+      if (!bonos || bonos.length === 0) {
+        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes bonos activos con saldo con este teléfono.</p>';
+        return;
+      }
+
+      let html = '';
+      bonos.forEach(b => {
+        const precioT = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+        const pagadoT = b.monto_pagado !== undefined ? b.monto_pagado : precioT;
+        const pendiente = precioT - pagadoT;
+        html += `<div style="background:#F3E8FD; border:1px solid #D8B4FE; padding:10px; border-radius:8px; margin-bottom:8px; color:#581C87;">
+          <b>Bono de ${b.sesiones_totales} Sesiones</b><br>
+          • Citas restantes: <b>${b.sesiones_restantes} / ${b.sesiones_totales}</b><br>
+          ${pendiente > 0 ? `• Pendiente de abono: <b style="color:#DC2626;">${pendiente} €</b>` : '• ¡Bono totalmente pagado!'}
+        </div>`;
+      });
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<span style="color:#DC2626;">Error: ${err.message}</span>`;
     }
   }
 
