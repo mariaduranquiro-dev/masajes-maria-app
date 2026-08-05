@@ -404,8 +404,15 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', citaEnEdicionId).single();
+      
+      // VALIDACIÓN ANTIDOBLE CITA
+      const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', citaEnEdicionId);
+      if (ocupadas && ocupadas.length > 0) {
+        mostrarAviso("Atención", "El horario seleccionado ya está ocupado por otra cita. Por favor, elige otro.", false);
+        return;
+      }
 
+      const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', citaEnEdicionId).single();
       const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
 
       if (!error) {
@@ -598,7 +605,11 @@
       const [h, m] = horaStr.split(':').map(Number);
       const slotMinutos = h * 60 + m;
 
-      if (esHoy && slotMinutos <= horaActualMinutos) {
+      // Si es hoy, ocultar horas pasadas solo para clientes normales (si es admin, permitimos rellenar histórico)
+      const urlParams = new URLSearchParams(window.location.search);
+      const isAdminMode = urlParams.get('admin') === 'true';
+
+      if (!isAdminMode && esHoy && slotMinutos <= horaActualMinutos) {
         return; 
       }
 
@@ -634,7 +645,7 @@
     const isAdminMode = urlParams.get('admin') === 'true';
 
     if (!isAdminMode) {
-      inputFecha.min = hoyFormatted; // Clientes normales: prohibido fechas pasadas
+      inputFecha.min = hoyFormatted; 
     }
 
     inputFecha.value = hoyFormatted;
@@ -663,6 +674,16 @@
       const cliente_telefono = document.getElementById('telefono').value.trim();
       const nota = document.getElementById('nota').value;
       const fechaEsp = formatearFechaEspanol(fecha);
+
+      // VALIDACIÓN ANTIDOBLE CITA AL CREAR
+      const { data: citasExistentes } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', horaVal);
+      if (citasExistentes && citasExistentes.length > 0) {
+        document.getElementById('error-mensaje').innerText = "Lo sentimos, este horario ya está ocupado. Por favor, selecciona otro.";
+        document.getElementById('modal-error').style.display = 'flex';
+        btn.disabled = false;
+        btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
+        return;
+      }
 
       let estadoCita = 'pendiente';
       let mensajeBonoTexto = '';
