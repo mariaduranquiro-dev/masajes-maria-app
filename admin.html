@@ -66,7 +66,8 @@
     .chip-pagado { background-color: #E6F4EA; color: #137333; border-left-color: #1e8e3e; }
     .chip-bono { background-color: #F3E8FD; color: #681DA8; border-left-color: #9333EA; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
-    .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; }
+    .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; cursor: pointer; }
+    .chip-bloqueo:hover { filter: brightness(0.95); }
 
     /* HUECOS LIBRES CON LÍNEA FINA SÓLIDA */
     .slot-empty {
@@ -257,7 +258,7 @@
     </div>
   </div>
 
-  <!-- BLOQUEO MANUAL AL FONDO -->
+  <!-- BLOQUEO MANUAL AL FONDO (SIN LISTA INFERIOR) -->
   <div class="card">
     <div class="block-manager-box">
       <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
@@ -278,8 +279,6 @@
         <input type="text" id="blk_motivo" placeholder="Motivo (Ej. Médico)" style="margin:0; padding:6px; font-size:12px;">
         <button type="submit" class="btn btn-gold" style="padding:7px 12px; font-size:11px;">+ Bloquear</button>
       </form>
-
-      <div id="lista-bloqueos-activos" style="margin-top:10px; font-size:11px; display:flex; flex-wrap:wrap; gap:6px;"></div>
     </div>
   </div>
 
@@ -327,6 +326,20 @@
         <button class="btn btn-gold" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionAnadirCita()">✚ Añadir Cita en este Hueco</button>
         <button class="btn btn-danger" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionBloquearHora()">🚫 Bloquear esta Hora</button>
         <button class="btn" style="padding: 10px; background: #ECE7DF; color: #333;" onclick="cerrarModalAccionSlot()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR DESBLOQUEO -->
+  <div class="modal" id="modal-desbloquear">
+    <div class="modal-content" style="max-width: 340px; text-align: center;">
+      <div style="font-size: 38px; margin-bottom: 6px;">🔓</div>
+      <div class="modal-header" style="justify-content: center; border:none; margin-bottom:4px;">¿Desbloquear Horario?</div>
+      <div style="font-size: 12px; color: #666; font-family: sans-serif; margin-bottom: 20px;" id="desbloquear-sub">¿Estás segura de eliminar este bloqueo y liberar el hueco?</div>
+      
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-gold" style="flex:1; padding: 12px;" onclick="ejecutarDesbloqueo()">Sí, Desbloquear</button>
+        <button class="btn" style="flex:1; padding: 12px; background: #ECE7DF; color: #333;" onclick="cerrarModalDesbloquear()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -542,6 +555,7 @@
   const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
+  let bloqueoSeleccionado = null;
   let bonoPagoSeleccionado = null;
   let clientesGlobalCache = [];
   let clienteTelefonoActual = null;
@@ -696,7 +710,7 @@
     verificarNotificacionesRecientes(false);
   }
 
-  // CALENDARIO DE 6 DÍAS (LUNES A SÁBADO) SIEMPRE EXPANDIDO CON LÍNEA SÓLIDA
+  // CALENDARIO DE 6 DÍAS (LUNES A SÁBADO) SIEMPRE EXPANDIDO CON BLOQUEOS CLICKEABLES
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -739,10 +753,19 @@
         
         let colHtml = `<div class="day-num ${isToday ? 'today' : ''}">${new Date(fechaStr).getDate()} ${isToday ? '★' : ''}</div>`;
 
-        let diaBloqueadoCompleto = false;
         let bloqueosDelDia = bloqueos ? bloqueos.filter(b => b.fecha === fechaStr) : [];
-        if (bloqueosDelDia.some(b => !b.hora || b.hora === 'ALL')) {
-          diaBloqueadoCompleto = true;
+        let bloqueoDiaCompleto = bloqueosDelDia.find(b => !b.hora || b.hora === 'ALL');
+
+        if (bloqueoDiaCompleto) {
+          colHtml += `
+            <div class="chip chip-bloqueo" onclick='abrirModalDesbloquear(${JSON.stringify(bloqueoDiaCompleto)})' title="Click para desbloquear día">
+              <span class="chip-time">🔒 Día Completo</span>
+              <span class="chip-name">BLOQUEADO</span>
+              <div class="chip-detail">${bloqueoDiaCompleto.motivo || 'No disponible'}</div>
+            </div>
+          `;
+          col.innerHTML = colHtml;
+          continue;
         }
 
         let horasDelDia = [...HORARIOS_SLOTS];
@@ -764,21 +787,10 @@
         horasDelDia.sort();
 
         horasDelDia.forEach(slotHora => {
-          if (diaBloqueadoCompleto) {
-            colHtml += `
-              <div class="chip chip-bloqueo">
-                <span class="chip-time">🔒 ${slotHora}</span>
-                <span class="chip-name">BLOQUEADO</span>
-                <div class="chip-detail">Día completo</div>
-              </div>
-            `;
-            return;
-          }
-
           const bloqueoHora = bloqueosDelDia.find(b => b.hora && b.hora.substring(0,5) === slotHora);
           if (bloqueoHora) {
             colHtml += `
-              <div class="chip chip-bloqueo">
+              <div class="chip chip-bloqueo" onclick='abrirModalDesbloquear(${JSON.stringify(bloqueoHora)})' title="Click para desbloquear hora">
                 <span class="chip-time">🔒 ${slotHora}</span>
                 <span class="chip-name">BLOQUEADO</span>
                 <div class="chip-detail">${bloqueoHora.motivo || 'No disponible'}</div>
@@ -899,7 +911,6 @@
 
     } catch (e) { console.error(e); }
 
-    cargarBloqueosLista();
     verificarNotificacionesRecientes(false);
   }
 
@@ -936,6 +947,41 @@
     } catch (err) {
       alert("Error al bloquear: " + err.message);
     }
+  }
+
+  // FUNCIONES PARA ELIMINAR BLOQUEO DESDE EL CALENDARIO
+  function abrirModalDesbloquear(bloqueo) {
+    bloqueoSeleccionado = bloqueo;
+    const fechaEsp = formatearFechaEspanol(bloqueo.fecha);
+    const horaTxt = (!bloqueo.hora || bloqueo.hora === 'ALL') ? 'Día Completo' : bloqueo.hora.substring(0,5);
+    document.getElementById('desbloquear-sub').innerHTML = `¿Estás segura de eliminar el bloqueo del día <b>${fechaEsp} (${horaTxt})</b> y liberar el hueco?`;
+    document.getElementById('modal-desbloquear').style.display = 'flex';
+  }
+
+  function cerrarModalDesbloquear() {
+    document.getElementById('modal-desbloquear').style.display = 'none';
+    bloqueoSeleccionado = null;
+  }
+
+  async function ejecutarDesbloqueo() {
+    if (!bloqueoSeleccionado) return;
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('bloqueos').delete().eq('id', bloqueoSeleccionado.id);
+      cerrarModalDesbloquear();
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al desbloquear: " + err.message);
+    }
+  }
+
+  async function guardarBloqueo(e) {
+    e.preventDefault();
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    await supabase.from('bloqueos').insert([nuevo]);
+    document.getElementById('form-bloqueo').reset();
+    cargarAgendaSemanal();
   }
 
   function abrirModalCitaManual(fechaPrefill = '', horaPrefill = '') { 
@@ -1031,38 +1077,6 @@
       cerrarModalEditarNota();
       await cargarListaClientesCompleta();
     } catch (err) { alert("Error: " + err.message); }
-  }
-
-  async function guardarBloqueo(e) {
-    e.preventDefault();
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
-    await supabase.from('bloqueos').insert([nuevo]);
-    document.getElementById('form-bloqueo').reset();
-    cargarAgendaSemanal();
-  }
-
-  async function cargarBloqueosLista() {
-    const container = document.getElementById('lista-bloqueos-activos');
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const hoy = formatDate(new Date());
-      const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', hoy).order('fecha', { ascending: true });
-      if (!bloqueos || bloqueos.length === 0) { container.innerHTML = '<span style="color:#888;">No hay bloqueos activos.</span>'; return; }
-      let html = '';
-      bloqueos.forEach(b => {
-        const horaTxt = (!b.hora || b.hora === 'ALL') ? 'Día completo' : b.hora.substring(0,5);
-        const fechaEspBlk = formatearFechaEspanol(b.fecha);
-        html += `<span style="background:#FEE2E2; color:#991B1B; padding:3px 8px; border-radius:12px; border:1px solid #FCA5A5; display:inline-flex; align-items:center; gap:4px;">🔒 ${fechaEspBlk} (${horaTxt}) <button onclick="eliminarBloqueo(${b.id})" style="border:none; background:none; color:#DC2626; font-weight:bold; cursor:pointer;">✕</button></span>`;
-      });
-      container.innerHTML = html;
-    } catch (err) { console.error(err); }
-  }
-
-  async function eliminarBloqueo(idBloqueo) {
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    await supabase.from('bloqueos').delete().eq('id', idBloqueo);
-    cargarAgendaSemanal();
   }
 
   async function abrirModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'flex'; cargarListaBonos(); }
