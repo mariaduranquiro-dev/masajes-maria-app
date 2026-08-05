@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>María Durán - Agenda Semanal</title>
+  <title>María Durán - Agenda Semanal Panel de Gestión</title>
 
   <!-- Configuración PWA / App Instalable -->
   <link rel="manifest" href="manifest-admin.json">
@@ -854,7 +854,7 @@
               chipClass = 'chip-bono';
             }
 
-            const precioTexto = citaEnSlot.servicio_id === 2 ? 'Bono' : '35€';
+            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : '35€';
             colHtml += `
               <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(citaEnSlot)})'>
                 <span class="chip-time">${citaEnSlot.hora.substring(0,5)}</span>
@@ -877,7 +877,7 @@
         col.innerHTML = colHtml;
       }
 
-      // CÁLCULO DE CONTABILIDAD (TENIENDO EN CUENTA LOS PAGOS DE BONOS POR SU FECHA)
+      // CÁLCULO DE CONTABILIDAD
       const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
       let startDate, endDate;
       const refDate = new Date(lunes);
@@ -1036,7 +1036,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS MEJORADO (AÑADIR/QUITAR SESIONES Y PAGOS CON FECHA)
+  // GESTOR DE BONOS MEJORADO
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     cargarListaBonos(); 
@@ -1116,10 +1116,8 @@
       const nuevoMontoPagado = bonoPagoSeleccionado.montoActual + ingresoNum;
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // Actualizar monto pagado en la tabla bonos
       await supabase.from('bonos').update({ monto_pagado: nuevoMontoPagado }).eq('id', bonoPagoSeleccionado.idBono);
       
-      // Registrar en la tabla de pagos con fecha para el informe económico
       await supabase.from('pagos_bonos').insert([{
         bono_id: bonoPagoSeleccionado.idBono,
         cliente_nombre: bonoPagoSeleccionado.cliente_nombre,
@@ -1133,57 +1131,31 @@
     }
   }
 
-  async function abrirModalRecordatorios48h() {
-    const container = document.getElementById('lista-recordatorios-48h');
-    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
-    document.getElementById('modal-recordatorios').style.display = 'flex';
-    const hoy = new Date(); const en48h = new Date(hoy); en48h.setDate(hoy.getDate() + 2);
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: citas } = await supabase.from('citas').select('*').gte('fecha', formatDate(hoy)).lte('fecha', formatDate(en48h)).order('fecha', { ascending: true });
-      if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
-      let html = '';
-      citas.forEach(cita => {
-        const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 3) ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
-        const fechaEsp = formatearFechaEspanol(cita.fecha);
-        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
-        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
-
-        html += `
-          <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
-              <span style="font-size:11px; color:#555;">📅 ${fechaEsp} • ⏰ ${cita.hora.substring(0,5)} h</span>
-            </div>
-            <button class="btn" style="background:#25D366; color:#FFF; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="enviarRecordatorio(this, '${linkWs}')">💬 Enviar</button>
-          </div>
-        `;
-      });
-      container.innerHTML = html;
-    } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
-  }
-
-  function enviarRecordatorio(btnEl, url) {
-    window.open(url, '_blank');
-    btnEl.style.backgroundColor = '#6B7280';
-    btnEl.style.borderColor = '#6B7280';
-    btnEl.style.pointerEvents = 'none';
-    btnEl.innerText = '✓ Enviado';
-  }
-
-  function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
-
-  function abrirModalGestion(cita) {
+  // VENTANA DE GESTIÓN DE CITA (MUESTRA SESIONES RESTANTES SI ES BONO Y CONVIERTE A BONO)
+  async function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
-    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 3) ? 'Sesión de Bono' : 'Quiromasaje (35€)';
+    
+    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : 'Quiromasaje (35€)';
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
-    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
+
+    let infoBonoExtra = '';
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', cita.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
+      if (bonos && bonos.length > 0) {
+        const b = bonos[0];
+        infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${b.sesiones_restantes} / ${b.sesiones_totales} sesiones restantes`;
+      }
+    } catch (err) { console.error(err); }
+
+    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}${infoBonoExtra}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
     
     const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
+
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
   function abrirModalAdminModificarCita() {
@@ -1236,12 +1208,48 @@
     }
   }
 
+  // CAMBIAR ESTADO DE LA CITA (CONVERSIÓN A BONO FUNCIONAL EN BD)
   async function setEstado(nuevoEstado) {
     if (!citaSeleccionada) return;
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    await supabase.from('citas').update({ estado: nuevoEstado }).eq('id', citaSeleccionada.id);
-    cerrarModalGestion();
-    cargarAgendaSemanal();
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // Si María la marca como bono, comprobar si tiene bono activo o crearle uno
+      if (nuevoEstado === 'bono') {
+        const { data: bonosActivos } = await supabase
+          .from('bonos')
+          .select('*')
+          .eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim())
+          .gt('sesiones_restantes', 0)
+          .order('id', { ascending: true })
+          .limit(1);
+
+        if (!bonosActivos || bonosActivos.length === 0) {
+          // Si no tiene bono activo, le creamos uno por defecto de 3 sesiones con 2 restantes (descontando esta)
+          await supabase.from('bonos').insert([{
+            cliente_nombre: citaSeleccionada.cliente_nombre,
+            cliente_telefono: citaSeleccionada.cliente_telefono,
+            sesiones_totales: 3,
+            sesiones_restantes: 2,
+            precio_total: 90,
+            monto_pagado: 0
+          }]);
+        } else {
+          // Si ya tiene bono activo, restarle una sesión
+          const bonoActual = bonosActivos[0];
+          if (bonoActual.sesiones_restantes > 0) {
+            await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes - 1 }).eq('id', bonoActual.id);
+          }
+        }
+      }
+
+      await supabase.from('citas').update({ estado: nuevoEstado, servicio_id: (nuevoEstado === 'bono' ? 2 : 1) }).eq('id', citaSeleccionada.id);
+      
+      cerrarModalGestion();
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al cambiar estado: " + err.message);
+    }
   }
 
   function pedirConfirmacionAnulacion() {
@@ -1256,7 +1264,7 @@
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 3) {
+    if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 5) {
       const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
       if (bonos && bonos.length > 0) {
         const b = bonos[0];
