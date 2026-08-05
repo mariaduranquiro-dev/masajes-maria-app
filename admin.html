@@ -82,7 +82,7 @@
 
     .block-manager-box { padding: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 10px; font-family: sans-serif; }
 
-    /* BOTÓN FLOTANTE DE CANDADO ABAJO A LA DERECHA */
+    /* BOTÓN FLOTANTE DE CANDADO */
     .floating-lock {
       position: fixed;
       bottom: 20px;
@@ -104,27 +104,27 @@
     }
     .floating-lock:hover { transform: scale(1.08); background-color: #DC2626; }
 
-    /* CAMPANA DE NOTIFICACIONES EN CABECERA */
+    /* CAMPANA DE NOTIFICACIONES */
     .bell-btn {
       position: relative;
       background: #FFFDF9;
-      border: 1px solid #B89047;
+      border: 1.5px solid #B89047;
       color: #0B1E36;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: bold;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .bell-badge {
-      position: absolute;
-      top: -5px;
-      right: -5px;
       background: #DC2626;
       color: #FFF;
-      font-size: 9px;
-      padding: 2px 5px;
-      border-radius: 50%;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
       font-weight: bold;
       display: none;
     }
@@ -146,7 +146,7 @@
 </head>
 <body>
 
-  <!-- BOTÓN FLOTANTE DE BLOQUEO / CERRAR SESIÓN -->
+  <!-- BOTÓN FLOTANTE DE BLOQUEO -->
   <div class="floating-lock" onclick="cerrarSesion()" title="Cerrar Sesión / Bloquear">
     🔒
   </div>
@@ -156,15 +156,15 @@
       <h1 class="logo-title">MARÍA DURÁN</h1>
       <div class="logo-subtitle">— QUIROMASAJISTA —</div>
     </div>
-    <div style="display:flex; align-items:center; gap:8px;">
+    <div style="display:flex; align-items:center; gap:10px;">
       <button class="bell-btn" onclick="abrirModalNotificaciones()" title="Centro de Notificaciones">
-        🔔 <span id="bell-count" class="bell-badge">0</span>
+        🔔 Avisos <span id="bell-count" class="bell-badge">0</span>
       </button>
       <div class="badge-pwa">PANEL DE GESTIÓN</div>
     </div>
   </div>
 
-  <!-- CALENDARIO OCUPANDO TODO EL ANCHO -->
+  <!-- CALENDARIO -->
   <div class="card">
     <div class="card-header">
       <div class="card-title-container">
@@ -283,7 +283,7 @@
         <button class="btn" onclick="cerrarModalNotificaciones()" style="background:#ECE7DF;">✕</button>
       </div>
       <div style="font-size: 12px; font-family: sans-serif; color: #555; margin-bottom: 12px;">
-        Resumen de avisos pendientes de revisión:
+        Avisos recientes de reservas, modificaciones y cancelaciones:
       </div>
       <div id="contenedor-desglose-notifs" style="max-height: 320px; overflow-y: auto;">
         <!-- Se rellena dinámicamente -->
@@ -484,7 +484,7 @@
   let bonoPagoSeleccionado = null;
   let clientesGlobalCache = [];
   let clienteTelefonoActual = null;
-  let datosNotificacionesGlobal = { nuevas: [], cancelaciones: [], modificaciones: [] };
+  let avisosGlobalCache = [];
 
   function verificarAccesoGuardado() {
     if (localStorage.getItem('admin_durán_auth') === 'true') {
@@ -550,95 +550,57 @@
     }
   }
 
-  // GESTIÓN DE NOTIFICACIONES (NUEVAS, CANCELACIONES, MODIFICACIONES)
+  // GESTIÓN DE AVISOS Y NOTIFICACIONES
   async function verificarNotificacionesRecientes() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const hoy = formatDate(new Date());
+      const { data: avisos } = await supabase.from('avisos_admin').select('*').order('id', { ascending: false });
 
-      // Nuevas citas pendientes
-      const { data: nuevas } = await supabase.from('citas').select('*').eq('estado', 'pendiente').gte('fecha', hoy);
-      // Cancelaciones
-      const { data: canceladas } = await supabase.from('citas').select('*').eq('estado', 'cancelada');
-      // Modificaciones
-      const { data: modificadas } = await supabase.from('citas').select('*').eq('estado', 'modificada');
-
-      datosNotificacionesGlobal.nuevas = nuevas || [];
-      datosNotificacionesGlobal.cancelaciones = canceladas || [];
-      datosNotificacionesGlobal.modificaciones = modificadas || [];
-
-      const totalNotifs = datosNotificacionesGlobal.nuevas.length + datosNotificacionesGlobal.cancelaciones.length + datosNotificacionesGlobal.modificaciones.length;
-      
+      avisosGlobalCache = avisos || [];
       const badge = document.getElementById('bell-count');
-      if (totalNotifs > 0) {
-        badge.innerText = totalNotifs;
+      
+      if (avisosGlobalCache.length > 0) {
+        badge.innerText = avisosGlobalCache.length;
         badge.style.display = 'inline-block';
-        // Si es la primera vez que abre sesión y hay notificaciones, mostrar modal automáticamente
-        if (!localStorage.getItem('notifs_vistas_sesion')) {
+        // Mostrar modal automáticamente si hay avisos nuevos en la sesión
+        if (!localStorage.getItem('avisos_vistos')) {
           abrirModalNotificaciones();
-          localStorage.setItem('notifs_vistas_sesion', 'true');
+          localStorage.setItem('avisos_vistos', 'true');
         }
       } else {
         badge.style.display = 'none';
       }
     } catch (err) {
-      console.error("Error verificando notificaciones:", err);
+      console.error("Error al cargar avisos:", err);
     }
   }
 
   function abrirModalNotificaciones() {
     const container = document.getElementById('contenedor-desglose-notifs');
-    const { nuevas, cancelaciones, modificaciones } = datosNotificacionesGlobal;
-
-    if (nuevas.length === 0 && cancelaciones.length === 0 && modificaciones.length === 0) {
-      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">No hay notificaciones pendientes. ¡Todo al día! 🎉</div>';
+    if (avisosGlobalCache.length === 0) {
+      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">No hay avisos pendientes. ¡Todo al día! 🎉</div>';
       document.getElementById('modal-notificaciones').style.display = 'flex';
       return;
     }
 
     let html = '';
+    avisosGlobalCache.forEach(a => {
+      let bg = '#FEF3C7';
+      let border = '#F59E0B';
+      let title = '✨ Nuevo Aviso';
+      if (a.tipo === 'cancelacion') { bg = '#FEE2E2'; border = '#FCA5A5'; title = '🗑 Cita Cancelada'; }
+      if (a.tipo === 'modificacion') { bg = '#F3E8FD'; border = '#D8B4FE'; title = '✏️ Cita Modificada'; }
 
-    // 1. NUEVAS CITAS
-    if (nuevas.length > 0) {
-      html += `<div style="margin-bottom:12px;"><strong style="color:#B89047; font-size:12px;">✨ Nuevas Citas (${nuevas.length})</strong>`;
-      nuevas.forEach(c => {
-        html += `<div style="background:#FEF3C7; border:1px solid #F59E0B; padding:8px; border-radius:6px; margin-top:4px; font-size:11px;">
-          <b>${c.cliente_nombre}</b> (${c.cliente_telefono})<br>
-          📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h
-        </div>`;
-      });
-      html += `</div>`;
-    }
-
-    // 2. MODIFICACIONES
-    if (modificaciones.length > 0) {
-      html += `<div style="margin-bottom:12px;"><strong style="color:#9333EA; font-size:12px;">✏️ Citas Modificadas por Clientes (${modificaciones.length})</strong>`;
-      modificaciones.forEach(c => {
-        html += `<div style="background:#F3E8FD; border:1px solid #D8B4FE; padding:8px; border-radius:6px; margin-top:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
+      html += `
+        <div style="background:${bg}; border:1px solid ${border}; padding:10px; border-radius:8px; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <b>${c.cliente_nombre}</b><br>
-            📅 Nueva fecha: <b>${c.fecha} (${c.hora.substring(0,5)} h)</b>
+            <b style="color:#0B1E36;">${title}</b><br>
+            <span>${a.mensaje}</span>
           </div>
-          <button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="resolverModificacion(${c.id})">✓ Entendido</button>
-        </div>`;
-      });
-      html += `</div>`;
-    }
-
-    // 3. CANCELACIONES
-    if (cancelaciones.length > 0) {
-      html += `<div style="margin-bottom:12px;"><strong style="color:#DC2626; font-size:12px;">🗑 Cancelaciones (${cancelaciones.length})</strong>`;
-      cancelaciones.forEach(c => {
-        html += `<div style="background:#FEE2E2; border:1px solid #FCA5A5; padding:8px; border-radius:6px; margin-top:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <b>${c.cliente_nombre}</b> (${c.cliente_telefono})<br>
-            Cita del ${c.fecha} a las ${c.hora.substring(0,5)} h
-          </div>
-          <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="borrarAvisoCancelacion(${c.id})">✕ Borrar</button>
-        </div>`;
-      });
-      html += `</div>`;
-    }
+          <button class="btn" style="background:#FFF; border:1px solid #999; padding:4px 8px; font-size:10px; cursor:pointer;" onclick="borrarAviso(${a.id})">✓ OK</button>
+        </div>
+      `;
+    });
 
     container.innerHTML = html;
     document.getElementById('modal-notificaciones').style.display = 'flex';
@@ -648,21 +610,10 @@
     document.getElementById('modal-notificaciones').style.display = 'none';
   }
 
-  async function resolverModificacion(idCita) {
+  async function borrarAviso(idAviso) {
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    // Cambiar estado a 'pendiente' o 'pagado' para quitar la alerta
-    await supabase.from('citas').update({ estado: 'pendiente' }).eq('id', idCita);
+    await supabase.from('avisos_admin').delete().eq('id', idAviso);
     cerrarModalNotificaciones();
-    cargarAgendaSemanal();
-    verificarNotificacionesRecientes();
-  }
-
-  async function borrarAvisoCancelacion(idCita) {
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    // Borrar definitivamente la cita cancelada de la base de datos
-    await supabase.from('citas').delete().eq('id', idCita);
-    cerrarModalNotificaciones();
-    cargarAgendaSemanal();
     verificarNotificacionesRecientes();
   }
 
@@ -721,9 +672,6 @@
 
       if (citasSemana && citasSemana.length > 0) {
         citasSemana.forEach(cita => {
-          // No mostrar en la agenda semanal las que estén canceladas
-          if (cita.estado === 'cancelada') return;
-
           const indexCol = fechasSemana.indexOf(cita.fecha);
           if (indexCol !== -1) {
             const col = document.getElementById(`col-${indexCol}`);
@@ -754,7 +702,7 @@
         });
       }
 
-      // CÁLCULO DE CONTABILIDAD SEGÚN EL PERIODO SELECCIONADO
+      // CÁLCULO DE CONTABILIDAD
       const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
       let startDate, endDate;
       const refDate = new Date(lunes);
@@ -830,37 +778,21 @@
     } catch (e) { console.error(e); }
 
     cargarBloqueosLista();
+    verificarNotificacionesRecientes();
   }
 
-  // MODAL CITA MANUAL (INDEX EMBEBIDO)
-  function abrirModalCitaManual() {
-    document.getElementById('modal-cita-manual').style.display = 'flex';
-  }
-  function cerrarModalCitaManual() {
-    document.getElementById('modal-cita-manual').style.display = 'none';
-    cargarAgendaSemanal();
-  }
+  function abrirModalCitaManual() { document.getElementById('modal-cita-manual').style.display = 'flex'; }
+  function cerrarModalCitaManual() { document.getElementById('modal-cita-manual').style.display = 'none'; cargarAgendaSemanal(); }
 
-  // MODAL RESUMEN ECONÓMICO
-  function abrirModalResumenEconomico() {
-    document.getElementById('modal-resumen-economico').style.display = 'flex';
-    togglePeriodoPersonalizado();
-    cargarAgendaSemanal();
-  }
-  function cerrarModalResumenEconomico() {
-    document.getElementById('modal-resumen-economico').style.display = 'none';
-  }
+  function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
+  function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // FICHA DE CLIENTES Y NOTAS
   async function abrirModalClientes() {
     document.getElementById('modal-clientes').style.display = 'flex';
     document.getElementById('input-buscar-cliente').value = '';
     await cargarListaClientesCompleta();
   }
-
-  function cerrarModalClientes() {
-    document.getElementById('modal-clientes').style.display = 'none';
-  }
+  function cerrarModalClientes() { document.getElementById('modal-clientes').style.display = 'none'; }
 
   async function cargarListaClientesCompleta() {
     const container = document.getElementById('lista-clientes-container');
@@ -873,32 +805,20 @@
       clientesGlobalCache = [];
       if (clientesReg) {
         clientesReg.forEach(c => {
-          clientesGlobalCache.push({
-            telefono: c.telefono,
-            nombre: c.nombre || 'Cliente sin nombre',
-            notas: c.notas || ''
-          });
+          clientesGlobalCache.push({ telefono: c.telefono, nombre: c.nombre || 'Cliente sin nombre', notas: c.notas || '' });
         });
       }
-
       renderizarClientes(clientesGlobalCache);
-    } catch (err) {
-      container.innerHTML = `<div style="color:red; font-size:11px;">Error al cargar: ${err.message}</div>`;
-    }
+    } catch (err) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${err.message}</div>`; }
   }
 
   function renderizarClientes(lista) {
     const container = document.getElementById('lista-clientes-container');
-    if (!lista || lista.length === 0) {
-      container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No se encontraron clientes registrados.</div>';
-      return;
-    }
-
+    if (!lista || lista.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No se encontraron clientes.</div>'; return; }
     let html = '';
     lista.forEach(c => {
-      const notaTxt = c.notas ? `<div style="font-size:11px; color:#B89047; margin-top:4px; font-style:italic;">📝 "${c.notas}"</div>` : '<div style="font-size:10px; color:#999; margin-top:2px;">Sin notas registradas</div>';
+      const notaTxt = c.notas ? `<div style="font-size:11px; color:#B89047; margin-top:4px; font-style:italic;">📝 "${c.notas}"</div>` : '<div style="font-size:10px; color:#999; margin-top:2px;">Sin notas</div>';
       const msjWs = encodeURIComponent(`Hola ${c.nombre}, te escribo desde la consulta de María Durán...`);
-      
       html += `
         <div class="cliente-card">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -920,9 +840,7 @@
 
   function filtrarClientes() {
     const filtro = document.getElementById('input-buscar-cliente').value.toLowerCase();
-    const filtrados = clientesGlobalCache.filter(c => 
-      c.nombre.toLowerCase().includes(filtro) || c.telefono.includes(filtro)
-    );
+    const filtrados = clientesGlobalCache.filter(c => c.nombre.toLowerCase().includes(filtro) || c.telefono.includes(filtro));
     renderizarClientes(filtrados);
   }
 
@@ -933,47 +851,26 @@
     document.getElementById('textarea-nota-cliente').value = notaActual !== 'null' ? notaActual : '';
     document.getElementById('modal-editar-nota').style.display = 'flex';
   }
-
-  function cerrarModalEditarNota() {
-    document.getElementById('modal-editar-nota').style.display = 'none';
-    clienteTelefonoActual = null;
-  }
+  function cerrarModalEditarNota() { document.getElementById('modal-editar-nota').style.display = 'none'; clienteTelefonoActual = null; }
 
   async function guardarNotaCliente() {
     if (!clienteTelefonoActual) return;
     const nuevaNota = document.getElementById('textarea-nota-cliente').value.trim();
-
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { error } = await supabase.from('clientes').update({ notas: nuevaNota }).eq('telefono', clienteTelefonoActual);
-
-      if (!error) {
-        cerrarModalEditarNota();
-        await cargarListaClientesCompleta();
-      } else {
-        alert("Error al guardar notas: " + error.message);
-      }
-    } catch (err) {
-      alert("Error: " + err.message);
-    }
+      await supabase.from('clientes').update({ notas: nuevaNota }).eq('telefono', clienteTelefonoActual);
+      cerrarModalEditarNota();
+      await cargarListaClientesCompleta();
+    } catch (err) { alert("Error: " + err.message); }
   }
 
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = {
-      fecha: document.getElementById('blk_fecha').value,
-      hora: document.getElementById('blk_hora').value,
-      motivo: document.getElementById('blk_motivo').value.trim()
-    };
-
-    const { error } = await supabase.from('bloqueos').insert([nuevo]);
-    if (!error) {
-      document.getElementById('form-bloqueo').reset();
-      cargarAgendaSemanal();
-    } else {
-      alert("Error al guardar bloqueo: " + error.message);
-    }
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    await supabase.from('bloqueos').insert([nuevo]);
+    document.getElementById('form-bloqueo').reset();
+    cargarAgendaSemanal();
   }
 
   async function cargarBloqueosLista() {
@@ -982,21 +879,11 @@
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const hoy = formatDate(new Date());
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', hoy).order('fecha', { ascending: true });
-
-      if (!bloqueos || bloqueos.length === 0) {
-        container.innerHTML = '<span style="color:#888;">No hay bloqueos activos próximos.</span>';
-        return;
-      }
-
+      if (!bloqueos || bloqueos.length === 0) { container.innerHTML = '<span style="color:#888;">No hay bloqueos activos.</span>'; return; }
       let html = '';
       bloqueos.forEach(b => {
         const horaTxt = (!b.hora || b.hora === 'ALL') ? 'Día completo' : b.hora.substring(0,5);
-        html += `
-          <span style="background:#FEE2E2; color:#991B1B; padding:3px 8px; border-radius:12px; border:1px solid #FCA5A5; display:inline-flex; align-items:center; gap:4px;">
-            🔒 ${b.fecha} (${horaTxt})
-            <button onclick="eliminarBloqueo(${b.id})" style="border:none; background:none; color:#DC2626; font-weight:bold; cursor:pointer; padding:0 2px;">✕</button>
-          </span>
-        `;
+        html += `<span style="background:#FEE2E2; color:#991B1B; padding:3px 8px; border-radius:12px; border:1px solid #FCA5A5; display:inline-flex; align-items:center; gap:4px;">🔒 ${b.fecha} (${horaTxt}) <button onclick="eliminarBloqueo(${b.id})" style="border:none; background:none; color:#DC2626; font-weight:bold; cursor:pointer;">✕</button></span>`;
       });
       container.innerHTML = html;
     } catch (err) { console.error(err); }
@@ -1008,38 +895,22 @@
     cargarAgendaSemanal();
   }
 
-  async function abrirModalGestorBonos() {
-    document.getElementById('modal-gestor-bonos').style.display = 'flex';
-    cargarListaBonos();
-  }
-
-  function cerrarModalGestorBonos() {
-    document.getElementById('modal-gestor-bonos').style.display = 'none';
-  }
+  async function abrirModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'flex'; cargarListaBonos(); }
+  function cerrarModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'none'; }
 
   async function cargarListaBonos() {
     const container = document.getElementById('lista-bonos-activos');
     container.innerHTML = '<div style="font-size:11px; color:#666;">Cargando bonos...</div>';
-
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: bonos } = await supabase.from('bonos').select('*').gt('sesiones_restantes', 0).order('id', { ascending: false });
-
-      if (!bonos || bonos.length === 0) {
-        container.innerHTML = '<div style="font-size:11px; color:#888;">No hay bonos activos con saldo.</div>';
-        return;
-      }
-
+      if (!bonos || bonos.length === 0) { container.innerHTML = '<div style="font-size:11px; color:#888;">No hay bonos activos.</div>'; return; }
       let html = '';
       bonos.forEach(b => {
         const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
         const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
         const pendiente = precioTotal - pagado;
-
-        const badgePago = (pendiente <= 0) 
-          ? `<span class="badge-pago-ok">✓ Pagado Total (${precioTotal}€)</span>` 
-          : `<span class="badge-pago-pendiente">🔴 Falta por pagar: ${pendiente}€</span>`;
-
+        const badgePago = (pendiente <= 0) ? `<span class="badge-pago-ok">✓ Pagado (${precioTotal}€)</span>` : `<span class="badge-pago-pendiente">🔴 Pendiente: ${pendiente}€</span>`;
         html += `
           <div class="bono-card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
@@ -1047,14 +918,11 @@
                 <strong style="font-size:12px; color:#0B1E36;">${b.cliente_nombre}</strong><br>
                 <span style="font-size:10px; color:#666;">📞 ${b.cliente_telefono}</span>
               </div>
-              <span style="font-size:10px; font-weight:bold; color:#B89047; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">
-                Citas restantes: ${b.sesiones_restantes} / ${b.sesiones_totales}
-              </span>
+              <span style="font-size:10px; font-weight:bold; color:#B89047; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">Restantes: ${b.sesiones_restantes}/${b.sesiones_totales}</span>
             </div>
-            
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
               <div>${badgePago}</div>
-              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Añadir Pago</button>` : ''}
+              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Pagar</button>` : ''}
             </div>
           </div>
         `;
@@ -1066,25 +934,15 @@
   function abrirModalAbonoPago(idBono, montoActual, precioTotal, clienteNombre) {
     const pendiente = precioTotal - montoActual;
     bonoPagoSeleccionado = { idBono, montoActual, precioTotal, clienteNombre, pendiente };
-
-    document.getElementById('info-pago-bono').innerHTML = `
-      Registrar cobro para <b>${clienteNombre}</b>.<br>
-      • Pendiente de pago actual: <b style="color:#DC2626;">${pendiente} €</b><br>
-      • Pagado hasta hoy: ${montoActual} € / ${precioTotal} €
-    `;
+    document.getElementById('info-pago-bono').innerHTML = `Registrar cobro para <b>${clienteNombre}</b>.<br>• Pendiente: <b style="color:#DC2626;">${pendiente} €</b>`;
     document.getElementById('pago_monto_ingresar').value = pendiente;
     document.getElementById('modal-agregar-pago').style.display = 'flex';
   }
-
-  function cerrarModalAgregarPago() {
-    document.getElementById('modal-agregar-pago').style.display = 'none';
-    bonoPagoSeleccionado = null;
-  }
+  function cerrarModalAgregarPago() { document.getElementById('modal-agregar-pago').style.display = 'none'; bonoPagoSeleccionado = null; }
 
   async function guardarAbonoPago(e) {
     e.preventDefault();
     if (!bonoPagoSeleccionado) return;
-
     const ingresoNum = parseFloat(document.getElementById('pago_monto_ingresar').value);
     if (!isNaN(ingresoNum) && ingresoNum > 0) {
       const nuevoMontoPagado = bonoPagoSeleccionado.montoActual + ingresoNum;
@@ -1092,66 +950,39 @@
       await supabase.from('bonos').update({ monto_pagado: nuevoMontoPagado }).eq('id', bonoPagoSeleccionado.idBono);
       cerrarModalAgregarPago();
       cargarAgendaSemanal();
+      abrirModalGestorBonos();
     }
   }
 
   async function abrirModalRecordatorios48h() {
     const container = document.getElementById('lista-recordatorios-48h');
-    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando citas próximas...</div>';
+    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
     document.getElementById('modal-recordatorios').style.display = 'flex';
-
-    const hoy = new Date();
-    const en48h = new Date(hoy);
-    en48h.setDate(hoy.getDate() + 2);
-
+    const hoy = new Date(); const en48h = new Date(hoy); en48h.setDate(hoy.getDate() + 2);
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: citas } = await supabase.from('citas').select('*').gte('fecha', formatDate(hoy)).lte('fecha', formatDate(en48h)).order('fecha', { ascending: true });
-
-      if (!citas || citas.length === 0) {
-        container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas programadas para los próximos 2 días.</div>';
-        return;
-      }
-
+      if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
       let html = '';
       citas.forEach(cita => {
-        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
-        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita de ${servicioTxt} el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. Si necesitas modificar o anular la cita, avísanos con antelación. ¡Gracias!`);
-        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
-
-        html += `
-          <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
-              <span style="font-size:11px; color:#555;">📅 ${cita.fecha} • ⏰ ${cita.hora.substring(0,5)} h</span>
-            </div>
-            <a href="${linkWs}" target="_blank" class="btn" style="background:#25D366; color:#FFF; border:none; text-decoration:none;">💬 Enviar 48h</a>
-          </div>
-        `;
+        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje';
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+        html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;"><div><b>${cita.cliente_nombre}</b><br><span style="font-size:11px; color:#555;">📅 ${cita.fecha} • ⏰ ${cita.hora.substring(0,5)} h</span></div><a href="https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}" target="_blank" class="btn" style="background:#25D366; color:#FFF; border:none; text-decoration:none;">💬 Enviar</a></div>`;
       });
       container.innerHTML = html;
     } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
   }
-
   function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
 
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
-    const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante (35€)';
-    document.getElementById('g-detalles').innerHTML = `
-      📅 <b>Fecha:</b> ${cita.fecha}<br>
-      ⏰ <b>Hora:</b> ${cita.hora}<br>
-      💆 <b>Tratamiento:</b> ${servicioTxt}<br>
-      📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>
-      ${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}
-    `;
-
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+    const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje (35€)';
+    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${cita.fecha}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán...`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
-
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
   async function setEstado(nuevoEstado) {
@@ -1162,52 +993,24 @@
     cargarAgendaSemanal();
   }
 
-  async function devolverSesionBono(telefonoCliente) {
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: bonos } = await supabase
-        .from('bonos')
-        .select('*')
-        .eq('cliente_telefono', telefonoCliente.trim())
-        .order('id', { ascending: false })
-        .limit(1);
-
-      if (bonos && bonos.length > 0) {
-        const bonoActual = bonos[0];
-        if (bonoActual.sesiones_restantes < bonoActual.sesiones_totales) {
-          const nuevasRestantes = bonoActual.sesiones_restantes + 1;
-          await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', bonoActual.id);
-        }
-      }
-    } catch (err) {
-      console.error("Error al devolver sesión de bono:", err);
-    }
-  }
-
   function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
-    const textoBonoAviso = (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2) 
-      ? '<br><br>🎟 <b>Nota:</b> Al anular esta cita, la sesión se devolverá automáticamente al saldo del bono del cliente.' 
-      : '';
-
-    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.${textoBonoAviso}`;
+    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a anular la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.`;
     document.getElementById('modal-gestionar-cita').style.display = 'none';
     document.getElementById('modal-confirmar-anulacion').style.display = 'flex';
   }
-
-  function cerrarModalConfirmarAnulacion() {
-    document.getElementById('modal-confirmar-anulacion').style.display = 'none';
-    if (citaSeleccionada) document.getElementById('modal-gestionar-cita').style.display = 'flex';
-  }
+  function cerrarModalConfirmarAnulacion() { document.getElementById('modal-confirmar-anulacion').style.display = 'none'; if (citaSeleccionada) document.getElementById('modal-gestionar-cita').style.display = 'flex'; }
 
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2) {
-      await devolverSesionBono(citaSeleccionada.cliente_telefono);
+      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
+      if (bonos && bonos.length > 0) {
+        const b = bonos[0];
+        if (b.sesiones_restantes < b.sesiones_totales) await supabase.from('bonos').update({ sesiones_restantes: b.sesiones_restantes + 1 }).eq('id', b.id);
+      }
     }
-
     await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
     document.getElementById('modal-confirmar-anulacion').style.display = 'none';
     citaSeleccionada = null;
