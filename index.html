@@ -308,6 +308,15 @@
   let citaEnEdicionId = null;
   let citaParaAnular = null;
 
+  function formatearFechaEspanol(fechaStr) {
+    if (!fechaStr) return '';
+    const partes = fechaStr.split('-');
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return fechaStr;
+  }
+
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
@@ -356,9 +365,10 @@
 
       let html = '';
       citas.forEach(c => {
+        const fechaEsp = formatearFechaEspanol(c.fecha);
         html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; padding:10px; border-radius:8px; margin-bottom:8px;">
           <b>${c.cliente_nombre}</b><br>
-          📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h<br>
+          📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h<br>
           <div style="display:flex; gap:6px; margin-top:8px;">
             <button class="btn" style="background:#0B1E36; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="iniciarModificacionCita(${c.id}, '${c.fecha}', '${c.hora}')">✏️ Modificar</button>
             <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="confirmarAnularCita(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}')">🗑 Anular</button>
@@ -373,7 +383,8 @@
 
   function iniciarModificacionCita(id, fechaActual, horaActual) {
     citaEnEdicionId = id;
-    document.getElementById('info-cita-modificar').innerHTML = `Modificando la cita del día <b>${fechaActual}</b> a las <b>${horaActual.substring(0,5)} h</b>.`;
+    const fechaEsp = formatearFechaEspanol(fechaActual);
+    document.getElementById('info-cita-modificar').innerHTML = `Modificando la cita del día <b>${fechaEsp}</b> a las <b>${horaActual.substring(0,5)} h</b>.`;
     document.getElementById('nuevo_fecha').value = fechaActual;
     document.getElementById('nuevo_hora').value = horaActual.substring(0,5);
     document.getElementById('modal-gestionar-citas').style.display = 'none';
@@ -389,6 +400,7 @@
     if (!citaEnEdicionId) return;
     const nuevaFecha = document.getElementById('nuevo_fecha').value;
     const nuevaHora = document.getElementById('nuevo_hora').value;
+    const fechaEsp = formatearFechaEspanol(nuevaFecha);
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -400,7 +412,7 @@
         if (citaAntigua) {
           await supabase.from('avisos_admin').insert([{
             tipo: 'modificacion',
-            mensaje: `El cliente ${citaAntigua.cliente_nombre} ha modificado su cita al ${nuevaFecha} a las ${nuevaHora.substring(0,5)} h.`
+            mensaje: `El cliente ${citaAntigua.cliente_nombre} ha modificado su cita al ${fechaEsp} a las ${nuevaHora.substring(0,5)} h.`
           }]);
         }
 
@@ -429,6 +441,7 @@
   async function ejecutarAnulacionCita() {
     if (!citaParaAnular) return;
     const { idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita } = citaParaAnular;
+    const fechaEsp = formatearFechaEspanol(fechaCita);
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -443,13 +456,12 @@
         }
       }
 
-      // BORRA AUTOMÁTICAMENTE LA CITA DE LA BASE DE DATOS
       const { error } = await supabase.from('citas').delete().eq('id', idCita);
 
       if (!error) {
         await supabase.from('avisos_admin').insert([{
           tipo: 'cancelacion',
-          mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaCita} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
+          mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaEsp} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
         }]);
 
         cerrarModalConfAnular();
@@ -532,7 +544,6 @@
     iCalLink.setAttribute('download', `cita-maria-duran-${fecha}.ics`);
   }
 
-  // --- FILTRADO INTELIGENTE DE HORAS PASADAS HOY ---
   async function actualizarHorariosDisponibles() {
     const fechaVal = document.getElementById('fecha').value;
     const container = document.getElementById('time-slots');
@@ -578,18 +589,15 @@
     container.innerHTML = '';
     let seleccionAutoHecha = false;
 
-    // COMPROBACIÓN DE HORA ACTUAL SI ES HOY
     const hoyStr = new Date().toISOString().split('T')[0];
     const esHoy = (fechaVal === hoyStr);
     const ahora = new Date();
     const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
 
     HORARIOS_ESTANDAR.forEach(horaStr => {
-      // Parsear hora del slot (ej: '11:00')
       const [h, m] = horaStr.split(':').map(Number);
       const slotMinutos = h * 60 + m;
 
-      // SI ES HOY Y LA HORA YA HA PASADO, SE OCULTA AUTOMÁTICAMENTE
       if (esHoy && slotMinutos <= horaActualMinutos) {
         return; 
       }
@@ -647,6 +655,7 @@
       const cliente_nombre = document.getElementById('nombre').value;
       const cliente_telefono = document.getElementById('telefono').value.trim();
       const nota = document.getElementById('nota').value;
+      const fechaEsp = formatearFechaEspanol(fecha);
 
       let estadoCita = 'pendiente';
       let mensajeBonoTexto = '';
@@ -718,16 +727,17 @@
         document.getElementById('error-mensaje').innerText = "Error al guardar cita: " + error.message;
         document.getElementById('modal-error').style.display = 'flex';
       } else {
-        await supabase.from('clientes').upsert([
+        await supabase.from('clientes'].upsert([
           { telefono: cliente_telefono, nombre: cliente_nombre }
         ], { onConflict: 'telefono', ignoreDuplicates: true });
 
+        // AVISO CON FECHA EN FORMATO ESPAÑOL DD/MM/AAAA
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
-          mensaje: `Nueva reserva de ${cliente_nombre} para el ${fecha} a las ${horaVal} h.`
+          mensaje: `Nueva reserva de ${cliente_nombre} para el ${fechaEsp} a las ${horaVal} h.`
         }]);
 
-        document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fecha}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
+        document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fechaEsp}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
         
         prepararEnlacesCalendario(fecha, horaVal, cliente_nombre);
 
