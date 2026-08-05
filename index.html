@@ -165,7 +165,10 @@
     <input type="date" id="fecha" required>
 
     <label>Horarios disponibles *</label>
-    <div class="time-slots" id="time-slots"></div>
+    <!-- Contenedor dinámico de horarios o input libre para admin -->
+    <div id="time-container">
+      <div class="time-slots" id="time-slots"></div>
+    </div>
     <input type="hidden" id="hora" value="">
 
     <div class="section-title" style="margin-top: 20px;">3. Tus datos de contacto</div>
@@ -182,7 +185,7 @@
     <button type="submit" class="btn-submit" id="btn-submit">✓ CONFIRMAR CITA (1 CLIC)</button>
   </form>
 
-  <div class="client-actions">
+  <div class="client-actions" id="client-actions-box">
     <button type="button" class="btn-action-client" onclick="abrirModalConsultaCitas()">📅 Gestionar / Anular Cita</button>
     <button type="button" class="btn-action-client" onclick="abrirModalConsultarBonos()">🎟 Consultar Mis Bonos</button>
   </div>
@@ -220,7 +223,6 @@
     
     <label for="nuevo_hora" style="text-align:left;">Nueva Hora *</label>
     <select id="nuevo_hora">
-      <option value="09:00">09:00 h</option>
       <option value="10:00">10:00 h</option>
       <option value="11:00">11:00 h</option>
       <option value="12:00">12:00 h</option>
@@ -304,9 +306,13 @@
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   
-  const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+  // 09:00 ELIMINADA PARA CLIENTES REGULARES
+  const HORARIOS_ESTANDAR = ['10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   let citaEnEdicionId = null;
   let citaParaAnular = null;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const isAdminMode = urlParams.get('admin') === 'true';
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -558,7 +564,8 @@
     const fechaObj = new Date(fechaVal + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
 
-    if (diaSemana === 0 || diaSemana === 6) {
+    // SI ES CLIENTE NORMAL, BLOQUEAR FINES DE SEMANA
+    if (!isAdminMode && (diaSemana === 0 || diaSemana === 6)) {
       document.getElementById('hora').value = '';
       container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>';
       return;
@@ -595,6 +602,21 @@
     container.innerHTML = '';
     let seleccionAutoHecha = false;
 
+    // SI ES MODO ADMIN, PERMITIR CUALQUIER HORA (INCLUYENDO CUSTOM COMO 14:00, 16:00, 09:00, ETC.)
+    if (isAdminMode) {
+      // Input de hora libre para María
+      const horaActualInput = document.getElementById('hora').value || '10:00';
+      container.innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="time" id="input_hora_libre" value="${horaActualInput}" onchange="document.getElementById('hora').value = this.value" style="margin:0; font-size:16px; font-weight:bold; color:#0B1E36;">
+        </div>
+        <div style="font-size:10px; color:#666; margin-top:4px;">María: Puedes introducir o elegir cualquier hora (Fines de semana, 14:00, 16:30, etc.).</div>
+      `;
+      document.getElementById('hora').value = horaActualInput;
+      return;
+    }
+
+    // PARA CLIENTES NORMALES
     const hoyStr = new Date().toISOString().split('T')[0];
     const esHoy = (fechaVal === hoyStr);
     const ahora = new Date();
@@ -604,10 +626,7 @@
       const [h, m] = horaStr.split(':').map(Number);
       const slotMinutos = h * 60 + m;
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const isAdminMode = urlParams.get('admin') === 'true';
-
-      if (!isAdminMode && esHoy && slotMinutos <= horaActualMinutos) {
+      if (esHoy && slotMinutos <= horaActualMinutos) {
         return; 
       }
 
@@ -639,8 +658,6 @@
     const inputFecha = document.getElementById('fecha');
     const hoyFormatted = new Date().toISOString().split('T')[0];
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdminMode = urlParams.get('admin') === 'true';
     const prefillFecha = urlParams.get('fecha');
     const prefillHora = urlParams.get('hora');
 
@@ -650,14 +667,20 @@
 
     inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
     inputFecha.addEventListener('change', actualizarHorariosDisponibles);
+    
     actualizarHorariosDisponibles().then(() => {
       if (prefillHora) {
-        const chips = document.querySelectorAll('#time-slots .time-chip');
-        chips.forEach(chip => {
-          if (chip.innerText.startsWith(prefillHora)) {
-            chip.click();
-          }
-        });
+        if (isAdminMode) {
+          document.getElementById('input_hora_libre').value = prefillHora;
+          document.getElementById('hora').value = prefillHora;
+        } else {
+          const chips = document.querySelectorAll('#time-slots .time-chip');
+          chips.forEach(chip => {
+            if (chip.innerText.startsWith(prefillHora)) {
+              chip.click();
+            }
+          });
+        }
       }
     });
   });
