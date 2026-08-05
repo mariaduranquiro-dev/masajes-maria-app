@@ -225,7 +225,6 @@
       <option value="10:00">10:00 h</option>
       <option value="11:00">11:00 h</option>
       <option value="12:00">12:00 h</option>
-      <option value="13:00">13:00 h</option>
       <option value="17:00">17:00 h</option>
       <option value="18:00">18:00 h</option>
       <option value="19:00">19:00 h</option>
@@ -305,8 +304,8 @@
   const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   
-  // 09:00 EXCLUIDA PARA CLIENTES (SÓLO 10:00 EN ADELANTE)
-  const HORARIOS_ESTANDAR = ['10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+  // 09:00 y 13:00 EXCLUIDAS PARA CLIENTES REGULARES
+  const HORARIOS_ESTANDAR = ['10:00', '11:00', '12:00', '17:00', '18:00', '19:00', '20:00'];
   let citaEnEdicionId = null;
   let citaParaAnular = null;
 
@@ -541,7 +540,7 @@
       "VERSION:2.0",
       "BEGIN:VEVENT",
       `SUMMARY:Cita Quiromasaje - María Durán`,
-      `DESCRIPTION:Cita reservada para ${nombreClient}.`,
+      `DESCRIPTION:Cita reservada para ${nombreCliente}.`,
       `DTSTART:${startStr}`,
       `DTEND:${endStr}`,
       `LOCATION:Consulta María Durán`,
@@ -563,7 +562,6 @@
     const fechaObj = new Date(fechaVal + 'T00:00:00');
     const diaSemana = fechaObj.getDay();
 
-    // BLOQUEAR FINES DE SEMANA SOLO PARA CLIENTES NORMALES
     if (!isAdminMode && (diaSemana === 0 || diaSemana === 6)) {
       document.getElementById('hora').value = '';
       container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>';
@@ -601,7 +599,6 @@
     container.innerHTML = '';
     let seleccionAutoHecha = false;
 
-    // SI ES MODO ADMIN (MARÍA), PERMITIR CUALQUIER HORA (LIBERTAD TOTAL)
     if (isAdminMode) {
       const horaActualInput = document.getElementById('hora').value || '10:00';
       container.innerHTML = `
@@ -614,7 +611,6 @@
       return;
     }
 
-    // CLIENTES NORMALES
     const hoyStr = new Date().toISOString().split('T')[0];
     const esHoy = (fechaVal === hoyStr);
     const ahora = new Date();
