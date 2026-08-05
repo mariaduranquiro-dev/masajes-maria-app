@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS -->
+  <!-- GESTOR DE BONOS (CON BUSCADOR LUPA) -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -434,10 +434,12 @@
         💡 Para crear un nuevo bono, utiliza el botón <b>"Añadir Cita Manual"</b> y selecciona el servicio de bono.
       </div>
 
+      <input type="text" id="input-busqueda-bonos" placeholder="🔍 Buscar por nombre o teléfono..." oninput="filtrarBonosGestor()" style="margin-bottom: 10px;">
+
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
         Bonos Registrados:
       </div>
-      <div id="lista-bonos-activos" style="max-height:300px; overflow-y:auto;"></div>
+      <div id="lista-bonos-activos" style="max-height:260px; overflow-y:auto;"></div>
 
       <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalGestorBonos()">Cerrar</button>
     </div>
@@ -466,7 +468,7 @@
     </div>
   </div>
 
-  <!-- MODAL GESTION CITA (CON BOTÓN DE REGISTRAR PAGO DIRECTO) -->
+  <!-- MODAL GESTION CITA -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
       <div class="modal-header">
@@ -475,7 +477,6 @@
       </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="g-detalles">Cargando detalles...</div>
       
-      <!-- BOTÓN DE REGISTRAR PAGO (PARCIAL O TOTAL) -->
       <button class="btn" style="background:#B89047; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="registrarPagoDesdeGestionCita()">💳 Registrar Pago (Parcial o Total)</button>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
@@ -553,10 +554,10 @@
   let avisosGlobalCache = [];
   let slotSeleccionadoAdmin = null;
   
-  // Variables para el bono de la cita actual en gestión
   let bonoIdActualCita = null;
   let bonoPrecioTotalActual = 0;
   let bonoPagadoActual = 0;
+  let cacheBonosGlobal = [];
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -1054,9 +1055,10 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS
+  // GESTOR DE BONOS CON BUSCADOR LUPA
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
+    document.getElementById('input-busqueda-bonos').value = '';
     cargarListaBonos(); 
   }
   function cerrarModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'none'; }
@@ -1067,40 +1069,58 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: bonos } = await supabase.from('bonos').select('*').order('id', { ascending: false });
-      if (!bonos || bonos.length === 0) { container.innerHTML = '<div style="font-size:11px; color:#888;">No hay bonos registrados.</div>'; return; }
-      let html = '';
-      bonos.forEach(b => {
-        const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
-        const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
-        const pendiente = precioTotal - pagado;
-        const badgePago = (pendiente <= 0) ? `<span class="badge-pago-ok">✓ Pagado (${precioTotal}€)</span>` : `<span class="badge-pago-pendiente">🔴 Pendiente: ${pendiente}€</span>`;
-        const usadas = b.sesiones_totales - b.sesiones_restantes;
-        
-        html += `
-          <div class="bono-card">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-              <div>
-                <strong style="font-size:12px; color:#0B1E36;">${b.cliente_nombre}</strong><br>
-                <span style="font-size:10px; color:#666;">📞 ${b.cliente_telefono}</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:4px; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">
-                <span style="font-size:10px; font-weight:bold; color:#B89047;">Sesiones: ${usadas}/${b.sesiones_totales}</span>
-                <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, 1)">-</button>
-                <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, -1)">+</button>
-              </div>
+      cacheBonosGlobal = bonos || [];
+      renderizarListaBonos(cacheBonosGlobal);
+    } catch (e) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${e.message}</div>`; }
+  }
+
+  function filtrarBonosGestor() {
+    const query = document.getElementById('input-busqueda-bonos').value.trim().toLowerCase();
+    const filtrados = cacheBonosGlobal.filter(b => 
+      (b.cliente_nombre && b.cliente_nombre.toLowerCase().includes(query)) || 
+      (b.cliente_telefono && b.cliente_telefono.includes(query))
+    );
+    renderizarListaBonos(filtrados);
+  }
+
+  function renderizarListaBonos(bonos) {
+    const container = document.getElementById('lista-bonos-activos');
+    if (!bonos || bonos.length === 0) { 
+      container.innerHTML = '<div style="font-size:11px; color:#888; text-align:center; padding:15px;">No hay bonos registrados.</div>'; 
+      return; 
+    }
+    let html = '';
+    bonos.forEach(b => {
+      const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+      const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
+      const pendiente = precioTotal - pagado;
+      const badgePago = (pendiente <= 0) ? `<span class="badge-pago-ok">✓ Pagado (${precioTotal}€)</span>` : `<span class="badge-pago-pendiente">🔴 Pendiente: ${pendiente}€</span>`;
+      const usadas = b.sesiones_totales - b.sesiones_restantes;
+      
+      html += `
+        <div class="bono-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+            <div>
+              <strong style="font-size:12px; color:#0B1E36;">${b.cliente_nombre}</strong><br>
+              <span style="font-size:10px; color:#666;">📞 ${b.cliente_telefono}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
-              <div>${badgePago}</div>
-              <div style="display:flex; gap:6px;">
-                ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Pagar</button>` : ''}
-                <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="eliminarBono(${b.id})">🗑 Borrar</button>
-              </div>
+            <div style="display:flex; align-items:center; gap:4px; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">
+              <span style="font-size:10px; font-weight:bold; color:#B89047;">Sesiones: ${usadas}/${b.sesiones_totales}</span>
+              <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, 1)">-</button>
+              <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, -1)">+</button>
             </div>
           </div>
-        `;
-      });
-      container.innerHTML = html;
-    } catch (e) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${e.message}</div>`; }
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
+            <div>${badgePago}</div>
+            <div style="display:flex; gap:6px;">
+              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Pagar</button>` : ''}
+              <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="eliminarBono(${b.id})">🗑 Borrar</button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
   }
 
   async function modificarSesionesBono(idBono, cambio) {
@@ -1242,7 +1262,6 @@
 
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
 
-  // REGISTRAR PAGO DIRECTAMENTE DESDE LA GESTIÓN DE LA CITA
   function registrarPagoDesdeGestionCita() {
     if (!citaSeleccionada) return;
     if (bonoIdActualCita) {
@@ -1303,7 +1322,6 @@
     }
   }
 
-  // CAMBIAR ESTADO A BONO (PERMITE ELEGIR ENTRE BONO DE 3 O BONO DE 5)
   async function setEstadoBono(numSesiones) {
     if (!citaSeleccionada) return;
     try {
