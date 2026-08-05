@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS -->
+  <!-- GESTOR DE BONOS (CON EDICIÓN MANUAL Y FECHA DE PAGO) -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -437,13 +437,13 @@
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
         Bonos Activos y Estado de Pago:
       </div>
-      <div id="lista-bonos-activos" style="max-height:260px; overflow-y:auto;"></div>
+      <div id="lista-bonos-activos" style="max-height:300px; overflow-y:auto;"></div>
 
       <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalGestorBonos()">Cerrar</button>
     </div>
   </div>
 
-  <!-- MODAL INTEGRADO PARA REGISTRAR PAGO A CUENTA -->
+  <!-- MODAL INTEGRADO PARA REGISTRAR PAGO A CUENTA CON FECHA -->
   <div class="modal" id="modal-agregar-pago">
     <div class="modal-content" style="max-width:380px;">
       <div class="modal-header">
@@ -457,6 +457,9 @@
         <label style="font-size:11px; font-family:sans-serif; font-weight:bold; color:#0B1E36;">¿Cuánto dinero entrega hoy el cliente (€)?</label>
         <input type="number" id="pago_monto_ingresar" step="0.01" min="0.01" required placeholder="Ej. 50">
         
+        <label style="font-size:11px; font-family:sans-serif; font-weight:bold; color:#0B1E36; margin-top:8px;">¿Qué día se realizó este pago? *</label>
+        <input type="date" id="pago_fecha_ingresar" required>
+
         <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Pago</button>
         <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalAgregarPago()">Cancelar</button>
       </form>
@@ -693,7 +696,7 @@
     verificarNotificacionesRecientes(false);
   }
 
-  // BUSCADOR RÁPIDO DE CITAS POR NOMBRE O TELÉFONO
+  // BUSCADOR RÁPIDO DE CITAS
   function abrirModalBuscadorCitas() {
     document.getElementById('input-busqueda-admin').value = '';
     document.getElementById('resultados-busqueda-admin').innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:15px;">Escribe un nombre o teléfono para buscar...</div>';
@@ -874,7 +877,7 @@
         col.innerHTML = colHtml;
       }
 
-      // CÁLCULO DE CONTABILIDAD
+      // CÁLCULO DE CONTABILIDAD (TENIENDO EN CUENTA LOS PAGOS DE BONOS POR SU FECHA)
       const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
       let startDate, endDate;
       const refDate = new Date(lunes);
@@ -909,6 +912,7 @@
       }
 
       const { data: citasPeriodo } = await supabase.from('citas').select('*').gte('fecha', startDate).lte('fecha', endDate);
+      const { data: pagosPeriodo } = await supabase.from('pagos_bonos').select('*').gte('fecha_pago', startDate).lte('fecha_pago', endDate);
 
       let ingresosPeriodo = 0;
       let sesionesPeriodo = citasPeriodo ? citasPeriodo.length : 0;
@@ -921,15 +925,9 @@
         });
       }
 
-      if (bonos) {
-        bonos.forEach(b => {
-          if (b.created_at) {
-            const fechaBono = b.created_at.substring(0, 10);
-            if (fechaBono >= startDate && fechaBono <= endDate) {
-              const pagadoBono = b.monto_pagado !== undefined ? b.monto_pagado : (b.precio_total || 90);
-              ingresosPeriodo += pagadoBono;
-            }
-          }
+      if (pagosPeriodo) {
+        pagosPeriodo.forEach(p => {
+          ingresosPeriodo += p.monto;
         });
       }
 
@@ -1038,7 +1036,11 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  async function abrirModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'flex'; cargarListaBonos(); }
+  // GESTOR DE BONOS MEJORADO (AÑADIR/QUITAR SESIONES Y PAGOS CON FECHA)
+  async function abrirModalGestorBonos() { 
+    document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
+    cargarListaBonos(); 
+  }
   function cerrarModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'none'; }
 
   async function cargarListaBonos() {
@@ -1046,14 +1048,15 @@
     container.innerHTML = '<div style="font-size:11px; color:#666;">Cargando bonos...</div>';
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: bonos } = await supabase.from('bonos').select('*').gt('sesiones_restantes', 0).order('id', { ascending: false });
-      if (!bonos || bonos.length === 0) { container.innerHTML = '<div style="font-size:11px; color:#888;">No hay bonos activos.</div>'; return; }
+      const { data: bonos } = await supabase.from('bonos').select('*').order('id', { ascending: false });
+      if (!bonos || bonos.length === 0) { container.innerHTML = '<div style="font-size:11px; color:#888;">No hay bonos registrados.</div>'; return; }
       let html = '';
       bonos.forEach(b => {
         const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
         const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
         const pendiente = precioTotal - pagado;
         const badgePago = (pendiente <= 0) ? `<span class="badge-pago-ok">✓ Pagado (${precioTotal}€)</span>` : `<span class="badge-pago-pendiente">🔴 Pendiente: ${pendiente}€</span>`;
+        
         html += `
           <div class="bono-card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
@@ -1061,7 +1064,11 @@
                 <strong style="font-size:12px; color:#0B1E36;">${b.cliente_nombre}</strong><br>
                 <span style="font-size:10px; color:#666;">📞 ${b.cliente_telefono}</span>
               </div>
-              <span style="font-size:10px; font-weight:bold; color:#B89047; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">Restantes: ${b.sesiones_restantes}/${b.sesiones_totales}</span>
+              <div style="display:flex; align-items:center; gap:4px; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">
+                <span style="font-size:10px; font-weight:bold; color:#B89047;">Sesiones: ${b.sesiones_restantes}/${b.sesiones_totales}</span>
+                <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, -1)">-</button>
+                <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, 1)">+</button>
+              </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
               <div>${badgePago}</div>
@@ -1074,11 +1081,27 @@
     } catch (e) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${e.message}</div>`; }
   }
 
+  async function modificarSesionesBono(idBono, cambio) {
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: bono } = await supabase.from('bonos').select('*').eq('id', idBono).single();
+      if (bono) {
+        let nuevasRestantes = bono.sesiones_restantes + cambio;
+        if (nuevasRestantes < 0) nuevasRestantes = 0;
+        if (nuevasRestantes > bono.sesiones_totales) nuevasRestantes = bono.sesiones_totales;
+        await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', idBono);
+        cargarListaBonos();
+        cargarAgendaSemanal();
+      }
+    } catch (err) { alert("Error al modificar sesiones: " + err.message); }
+  }
+
   function abrirModalAbonoPago(idBono, montoActual, precioTotal, clienteNombre) {
     const pendiente = precioTotal - montoActual;
     bonoPagoSeleccionado = { idBono, montoActual, precioTotal, clienteNombre, pendiente };
     document.getElementById('info-pago-bono').innerHTML = `Registrar cobro para <b>${clienteNombre}</b>.<br>• Pendiente: <b style="color:#DC2626;">${pendiente} €</b>`;
     document.getElementById('pago_monto_ingresar').value = pendiente;
+    document.getElementById('pago_fecha_ingresar').value = new Date().toISOString().split('T')[0];
     document.getElementById('modal-agregar-pago').style.display = 'flex';
   }
   function cerrarModalAgregarPago() { document.getElementById('modal-agregar-pago').style.display = 'none'; bonoPagoSeleccionado = null; }
@@ -1087,10 +1110,23 @@
     e.preventDefault();
     if (!bonoPagoSeleccionado) return;
     const ingresoNum = parseFloat(document.getElementById('pago_monto_ingresar').value);
-    if (!isNaN(ingresoNum) && ingresoNum > 0) {
+    const fechaPago = document.getElementById('pago_fecha_ingresar').value;
+
+    if (!isNaN(ingresoNum) && ingresoNum > 0 && fechaPago) {
       const nuevoMontoPagado = bonoPagoSeleccionado.montoActual + ingresoNum;
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      // Actualizar monto pagado en la tabla bonos
       await supabase.from('bonos').update({ monto_pagado: nuevoMontoPagado }).eq('id', bonoPagoSeleccionado.idBono);
+      
+      // Registrar en la tabla de pagos con fecha para el informe económico
+      await supabase.from('pagos_bonos').insert([{
+        bono_id: bonoPagoSeleccionado.idBono,
+        cliente_nombre: bonoPagoSeleccionado.cliente_nombre,
+        monto: ingresoNum,
+        fecha_pago: fechaPago
+      }]);
+
       cerrarModalAgregarPago();
       cargarAgendaSemanal();
       abrirModalGestorBonos();
@@ -1108,9 +1144,9 @@
       if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
       let html = '';
       citas.forEach(cita => {
-        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
+        const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 3) ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
         const fechaEsp = formatearFechaEspanol(cita.fecha);
-        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita de ${servicioTxt} el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. Si necesitas modificar o anular la cita, avísanos con antelación. ¡Gracias!`);
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
         const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
 
         html += `
@@ -1140,11 +1176,11 @@
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
-    const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje (35€)';
+    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 3) ? 'Sesión de Bono' : 'Quiromasaje (35€)';
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
     document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
     
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la consulta de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
@@ -1220,7 +1256,7 @@
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2) {
+    if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 3) {
       const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
       if (bonos && bonos.length > 0) {
         const b = bonos[0];
