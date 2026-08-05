@@ -205,7 +205,7 @@
     
     <div id="lista-citas-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
     
-    <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalGestionarCitas()">Cerrar</button>
+    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:10px;" onclick="cerrarModalGestionarCitas()">Cerrar</button>
   </div>
 </div>
 
@@ -232,7 +232,7 @@
     </select>
 
     <button class="btn-modal" onclick="ejecutarModificacionCita()">Guardar Cambios</button>
-    <button class="btn" style="width:100%; padding:10px; margin-top:8px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalModificarCita()">Volver</button>
+    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:6px;" onclick="cerrarModalModificarCita()">Volver</button>
   </div>
 </div>
 
@@ -248,7 +248,30 @@
     
     <div id="lista-bonos-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
     
-    <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333; border:none; border-radius:8px; cursor:pointer; font-weight:bold;" onclick="cerrarModalConsultarBonos()">Cerrar</button>
+    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:10px;" onclick="cerrarModalConsultarBonos()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal Genérico de Notificación Interna -->
+<div class="modal" id="modal-notif">
+  <div class="modal-content" style="text-align: center;">
+    <div class="modal-icon" id="notif-icon">✓</div>
+    <div class="modal-title" id="notif-titulo">Aviso</div>
+    <div class="modal-desc" id="notif-texto" style="text-align: center;"></div>
+    <button class="btn-modal" onclick="cerrarModalNotif()">Aceptar</button>
+  </div>
+</div>
+
+<!-- Modal Confirmación de Anulación -->
+<div class="modal" id="modal-conf-anular">
+  <div class="modal-content" style="text-align: center;">
+    <div class="modal-icon" style="color:#DC2626;">⚠️</div>
+    <div class="modal-title">¿Anular Cita?</div>
+    <div class="modal-desc" id="conf-anular-texto" style="text-align: center;">¿Estás seguro de que deseas anular esta cita?</div>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn-modal" style="background:#DC2626;" onclick="ejecutarAnulacionCita()">Sí, Anular</button>
+      <button class="btn-modal" style="background:#ECE7DF; color:#333;" onclick="cerrarModalConfAnular()">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -283,6 +306,7 @@
   
   const HORARIOS_ESTANDAR = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   let citaEnEdicionId = null;
+  let citaParaAnular = null;
 
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
@@ -298,6 +322,15 @@
 
   function cerrarModalExito() { document.getElementById('modal-exito').style.display = 'none'; }
   function cerrarModalError() { document.getElementById('modal-error').style.display = 'none'; }
+
+  function mostrarAviso(titulo, texto, esExito = true) {
+    document.getElementById('notif-titulo').innerText = titulo;
+    document.getElementById('notif-texto').innerText = texto;
+    document.getElementById('notif-icon').innerText = esExito ? '✓' : '⚠️';
+    document.getElementById('notif-icon').style.color = esExito ? '#1e8e3e' : '#DC2626';
+    document.getElementById('modal-notif').style.display = 'flex';
+  }
+  function cerrarModalNotif() { document.getElementById('modal-notif').style.display = 'none'; }
 
   // Modales cliente
   function abrirModalConsultaCitas() { document.getElementById('busq-tel-citas').value = ''; document.getElementById('lista-citas-cliente').innerHTML = ''; document.getElementById('modal-gestionar-citas').style.display = 'flex'; }
@@ -329,7 +362,7 @@
           📅 ${c.fecha} • ⏰ ${c.hora.substring(0,5)} h<br>
           <div style="display:flex; gap:6px; margin-top:8px;">
             <button class="btn" style="background:#0B1E36; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="iniciarModificacionCita(${c.id}, '${c.fecha}', '${c.hora}')">✏️ Modificar</button>
-            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="anularCitaCliente(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id})">🗑 Anular</button>
+            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="confirmarAnularCita(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id})">🗑 Anular</button>
           </div>
         </div>`;
       });
@@ -363,24 +396,35 @@
       const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
 
       if (!error) {
-        alert("¡Cita modificada con éxito!");
         cerrarModalModificarCita();
         cerrarModalGestionarCitas();
+        mostrarAviso("¡Modificación Exitosa!", "Tu cita ha sido actualizada correctamente.", true);
       } else {
-        alert("Error al modificar: " + error.message);
+        mostrarAviso("Atención", "Error al modificar: " + error.message, false);
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      mostrarAviso("Atención", "Error: " + err.message, false);
     }
   }
 
-  async function anularCitaCliente(idCita, estadoCita, telefonoCliente, servicioId) {
-    if (!confirm("¿Estás seguro de que deseas anular esta cita?")) return;
+  function confirmarAnularCita(idCita, estadoCita, telefonoCliente, servicioId) {
+    citaParaAnular = { idCita, estadoCita, telefonoCliente, servicioId };
+    document.getElementById('modal-gestionar-citas').style.display = 'none';
+    document.getElementById('modal-conf-anular').style.display = 'flex';
+  }
+
+  function cerrarModalConfAnular() {
+    document.getElementById('modal-conf-anular').style.display = 'none';
+    document.getElementById('modal-gestionar-citas').style.display = 'flex';
+  }
+
+  async function ejecutarAnulacionCita() {
+    if (!citaParaAnular) return;
+    const { idCita, estadoCita, telefonoCliente, servicioId } = citaParaAnular;
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // Si era de bono, devolver sesión
       if (estadoCita === 'bono' || servicioId === 2) {
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
         if (bonos && bonos.length > 0) {
@@ -392,15 +436,17 @@
       }
 
       const { error } = await supabase.from('citas').delete().eq('id', idCita);
+      cerrarModalConfAnular();
       if (!error) {
-        alert("Cita anulada correctamente.");
-        buscarCitasCliente();
+        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha liberado el hueco.", true);
       } else {
-        alert("Error al anular: " + error.message);
+        mostrarAviso("Atención", "Error al anular: " + error.message, false);
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      cerrarModalConfAnular();
+      mostrarAviso("Atención", "Error: " + err.message, false);
     }
+    citaParaAnular = null;
   }
 
   async function buscarBonosCliente() {
