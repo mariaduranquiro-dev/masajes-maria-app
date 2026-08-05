@@ -440,11 +440,42 @@
         <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstado('bono')"><span>🎟 Marcar como SESIÓN DE BONO</span></button>
         <button class="btn-status-opt" style="background:#FEF3C7; color:#92400E;" onclick="setEstado('pendiente')"><span>⏳ Marcar como PENDIENTE</span></button>
       </div>
-      <div style="display:flex; gap:8px; margin-top:15px; border-top:1px solid #E2DBCF; padding-top:12px;">
+      <div style="display:flex; gap:6px; margin-top:15px; border-top:1px solid #E2DBCF; padding-top:12px;">
         <button class="btn" style="background:#25D366; color:#FFF; border:none; flex:1; padding:10px;" id="btn-ws-modal">💬 WhatsApp</button>
-        <button class="btn btn-danger" style="padding:10px;" onclick="pedirConfirmacionAnulacion()">🗑 Borrar Cita</button>
+        <button class="btn" style="background:#0B1E36; color:#FFF; border:none; padding:10px;" onclick="abrirModalAdminModificarCita()">✏️ Modificar</button>
+        <button class="btn btn-danger" style="padding:10px;" onclick="pedirConfirmacionAnulacion()">🗑 Borrar</button>
       </div>
       <button class="btn" style="width:100%; padding:8px; margin-top:8px; background:#ECE7DF; color:#333;" onclick="cerrarModalGestion()">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: MODIFICAR CITA (ADMIN) -->
+  <div class="modal" id="modal-admin-modificar-cita">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>✏️ Modificar Cita (Admin)</span>
+        <button class="btn" onclick="cerrarModalAdminModificarCita()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="admin-info-cita-modificar"></div>
+      
+      <label style="text-align:left; font-size:11px; font-weight:bold; color:#0B1E36;">Nueva Fecha *</label>
+      <input type="date" id="admin_nuevo_fecha">
+      
+      <label style="text-align:left; font-size:11px; font-weight:bold; color:#0B1E36;">Nueva Hora *</label>
+      <select id="admin_nuevo_hora">
+        <option value="09:00">09:00 h</option>
+        <option value="10:00">10:00 h</option>
+        <option value="11:00">11:00 h</option>
+        <option value="12:00">12:00 h</option>
+        <option value="13:00">13:00 h</option>
+        <option value="17:00">17:00 h</option>
+        <option value="18:00">18:00 h</option>
+        <option value="19:00">19:00 h</option>
+        <option value="20:00">20:00 h</option>
+      </select>
+
+      <button class="btn btn-gold" style="width:100%; padding:12px; margin-top:10px;" onclick="ejecutarAdminModificacionCita()">Guardar Cambios</button>
+      <button class="btn" style="width:100%; padding:8px; margin-top:6px; background:#ECE7DF; color:#333;" onclick="cerrarModalAdminModificarCita()">Cancelar</button>
     </div>
   </div>
 
@@ -796,13 +827,12 @@
   }
 
   function abrirModalCitaManual() { 
-    // CARGAMOS EL IFRAME LIMPIO CADA VEZ QUE SE ABRE PARA QUE NUNCA RECUERDE DATOS ANTERIORES
     document.getElementById('iframe-cita-manual').src = "index.html?admin=true";
     document.getElementById('modal-cita-manual').style.display = 'flex'; 
   }
   function cerrarModalCitaManual() { 
     document.getElementById('modal-cita-manual').style.display = 'none'; 
-    document.getElementById('iframe-cita-manual').src = ""; // Vaciamos el iframe al cerrar
+    document.getElementById('iframe-cita-manual').src = ""; 
     cargarAgendaSemanal(); 
   }
 
@@ -1029,6 +1059,50 @@
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
+
+  // NUEVAS FUNCIONES PARA MODIFICAR CITA DESDE EL PANEL DE MARÍA
+  function abrirModalAdminModificarCita() {
+    if (!citaSeleccionada) return;
+    const fechaEsp = formatearFechaEspanol(citaSeleccionada.fecha);
+    document.getElementById('admin-info-cita-modificar').innerHTML = `Modificando la cita de <b>${citaSeleccionada.cliente_nombre}</b>.<br>Fecha actual: <b>${fechaEsp}</b> a las <b>${citaSeleccionada.hora.substring(0,5)} h</b>.`;
+    document.getElementById('admin_nuevo_fecha').value = citaSeleccionada.fecha;
+    document.getElementById('admin_nuevo_hora').value = citaSeleccionada.hora.substring(0,5);
+    
+    document.getElementById('modal-gestionar-cita').style.display = 'none';
+    document.getElementById('modal-admin-modificar-cita').style.display = 'flex';
+  }
+
+  function cerrarModalAdminModificarCita() {
+    document.getElementById('modal-admin-modificar-cita').style.display = 'none';
+    document.getElementById('modal-gestionar-cita').style.display = 'flex';
+  }
+
+  async function ejecutarAdminModificacionCita() {
+    if (!citaSeleccionada) return;
+    const nuevaFecha = document.getElementById('admin_nuevo_fecha').value;
+    const nuevaHora = document.getElementById('admin_nuevo_hora').value;
+    const fechaEsp = formatearFechaEspanol(nuevaFecha);
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaSeleccionada.id);
+
+      if (!error) {
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'modificacion',
+          mensaje: `María ha modificado la cita de ${citaSeleccionada.cliente_nombre} al ${fechaEsp} a las ${nuevaHora} h.`
+        }]);
+
+        cerrarModalAdminModificarCita();
+        cerrarModalGestion();
+        cargarAgendaSemanal();
+      } else {
+        alert("Error al modificar cita: " + error.message);
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  }
 
   async function setEstado(nuevoEstado) {
     if (!citaSeleccionada) return;
