@@ -150,6 +150,15 @@
         <div class="service-desc">3 Sesiones (30€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
       </div>
 
+      <!-- OPCIÓN DE 5 SESIONES EXCLUSIVA PARA MARÍA -->
+      <div class="card-option" id="admin-bono-5-opt" style="display:none;" onclick="selectService(this, 5)">
+        <div class="service-header">
+          <span>Comprar Bono 5 Sesiones (Admin)</span>
+          <span class="service-price">140 €</span>
+        </div>
+        <div class="service-desc">5 Sesiones • Bono especial de 5 sesiones por 140 euros.</div>
+      </div>
+
       <div class="card-option" onclick="selectService(this, 2)">
         <div class="service-header">
           <span>Canjear Sesión de Bono Existente</span>
@@ -165,7 +174,9 @@
     <input type="date" id="fecha" required>
 
     <label>Horarios disponibles *</label>
-    <div class="time-slots" id="time-slots"></div>
+    <div id="time-container">
+      <div class="time-slots" id="time-slots"></div>
+    </div>
     <input type="hidden" id="hora" value="">
 
     <div class="section-title" style="margin-top: 20px;">3. Tus datos de contacto</div>
@@ -308,6 +319,11 @@
 
   const urlParams = new URLSearchParams(window.location.search);
   const isAdminMode = urlParams.get('admin') === 'true';
+
+  // Mostrar opción de bono de 5 sesiones solo si está en modo admin
+  if (isAdminMode) {
+    document.getElementById('admin-bono-5-opt').style.display = 'block';
+  }
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -463,7 +479,7 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      if (estadoCita === 'bono' || servicioId === 2) {
+      if (estadoCita === 'bono' || servicioId === 2 || servicioId === 5) {
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
         if (bonos && bonos.length > 0) {
           const bonoActual = bonos[0];
@@ -736,6 +752,29 @@
         estadoCita = 'bono';
         mensajeBonoTexto = `<br><br>🎟 <b>¡Nuevo Bono Solicitado (90 €)!</b><br>Has reservado tu 1ª sesión. Te quedan <b>2/3 citas en tu bono</b>.`;
 
+      } else if (servicio_id === 5) {
+        const nuevoBono5 = {
+          cliente_nombre: cliente_nombre,
+          cliente_telefono: cliente_telefono,
+          sesiones_totales: 5,
+          sesiones_restantes: 4,
+          precio_total: 140,
+          monto_pagado: 0
+        };
+
+        const { error: errorBono5 } = await supabase.from('bonos').insert([nuevoBono5]);
+
+        if (errorBono5) {
+          document.getElementById('error-mensaje').innerText = "Error al crear el bono de 5: " + errorBono5.message;
+          document.getElementById('modal-error').style.display = 'flex';
+          btn.disabled = false;
+          btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
+          return;
+        }
+
+        estadoCita = 'bono';
+        mensajeBonoTexto = `<br><br>🎟 <b>¡Nuevo Bono de 5 Sesiones Solicitado (140 €)!</b><br>Has reservado tu 1ª sesión. Te quedan <b>4/5 citas en tu bono</b>.`;
+
       } else if (servicio_id === 2) {
         const { data: bonosActivos } = await supabase
           .from('bonos')
@@ -746,7 +785,7 @@
           .limit(1);
 
         if (!bonosActivos || bonosActivos.length === 0) {
-          document.getElementById('error-mensaje').innerHTML = `No se ha encontrado un bono activo con saldo para el teléfono <b>${cliente_telefono}</b>.<br><br>Si deseas comprar uno nuevo, selecciona la opción <b>"Comprar Nuevo Bono (3 Sesiones)"</b>.`;
+          document.getElementById('error-mensaje').innerHTML = `No se ha encontrado un bono activo con saldo para el teléfono <b>${cliente_telefono}</b>.<br><br>Si deseas comprar uno nuevo, selecciona la opción correspondiente.`;
           document.getElementById('modal-error').style.display = 'flex';
           btn.disabled = false;
           btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
@@ -756,7 +795,7 @@
         const bonoActual = bonosActivos[0];
         const deTotales = bonoActual.sesiones_totales || 3;
         const nuevasRestantes = bonoActual.sesiones_restantes - 1;
-        const pPendiente = (bonoActual.precio_total || 90) - (bonoActual.monto_pagado || 0);
+        const pPendiente = (bonoActual.precio_total || (deTotales === 5 ? 140 : 90)) - (bonoActual.monto_pagado || 0);
 
         await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', bonoActual.id);
         
@@ -771,7 +810,7 @@
         }
       }
 
-      const idServicioGuardar = (servicio_id === 3) ? 2 : servicio_id;
+      const idServicioGuardar = (servicio_id === 3 || servicio_id === 5) ? 2 : servicio_id;
       const { error } = await supabase
         .from('citas')
         .insert([{ servicio_id: idServicioGuardar, fecha, hora: horaVal, cliente_nombre, cliente_telefono, nota, estado: estadoCita }]);
