@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; }
-    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; }
+    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; position: relative; min-height: 100vh; }
 
     .brand-header { display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border-radius: 12px; padding: 12px 20px; border: 1px solid #E2DBCF; box-shadow: 0 4px 15px rgba(11, 30, 54, 0.05); margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
     .logo-container { text-align: center; flex: 1; min-width: 200px; }
@@ -25,13 +25,14 @@
     .logo-subtitle { font-size: 9px; color: #B89047; letter-spacing: 5px; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
     .badge-pwa { background-color: #0B1E36; color: #F6F3ED; font-size: 10px; padding: 6px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #B89047; }
 
-    .main-grid { display: grid; grid-template-columns: 1fr 360px; gap: 15px; }
+    /* CALENDARIO OCUPANDO TODO EL ANCHO */
     .card { background: #FFFFFF; border-radius: 12px; padding: 16px; border: 1px solid #E2DBCF; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 15px; }
     .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F6F3ED; padding-bottom: 10px; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+    .card-title-container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .card-title { font-size: 16px; font-weight: bold; color: #0B1E36; margin: 0; }
     .card-subtitle { font-size: 11px; color: #7A8B9E; margin-top: 2px; font-family: sans-serif; }
 
-    .nav-buttons { display: flex; gap: 6px; }
+    .nav-buttons { display: flex; gap: 6px; align-items: center; }
     .btn { padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid #D1C7B7; cursor: pointer; background: #FFF; color: #0B1E36; }
     .btn-active { background-color: #0B1E36; color: #FFFFFF; border-color: #0B1E36; }
     .btn-gold { background-color: #B89047; color: #FFFFFF; border-color: #B89047; }
@@ -77,22 +78,37 @@
 
     .block-manager-box { margin-top: 15px; padding: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 10px; font-family: sans-serif; }
 
-    .side-title { font-size: 11px; font-weight: bold; color: #0B1E36; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-family: sans-serif; }
-    .quick-action-item { padding: 12px; background: #FFFFFF; border: 1px solid #E2DBCF; border-radius: 8px; margin-bottom: 8px; font-size: 12px; font-weight: bold; color: #0B1E36; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-family: sans-serif; }
+    /* PANEL DE ACCIONES RÁPIDAS DEBAJO */
+    .side-title { font-size: 12px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: sans-serif; }
+    .actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .quick-action-item { padding: 14px; background: #FFFFFF; border: 1px solid #E2DBCF; border-radius: 10px; font-size: 13px; font-weight: bold; color: #0B1E36; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-family: sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
     .quick-action-item:hover { border-color: #B89047; background-color: #FFFDF9; }
 
-    .phone-frame { background-color: #0B1E36; border-radius: 24px; padding: 12px; margin-top: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
-    .phone-screen { background-color: #F6F3ED; border-radius: 16px; padding: 8px; overflow: hidden; }
-
-    @media (max-width: 900px) {
-      .main-grid { grid-template-columns: 1fr; }
-      .phone-frame { display: none; }
-      .badge-pwa { display: none; }
+    /* BOTÓN FLOTANTE DE CANDADO ABAJO A LA DERECHA */
+    .floating-lock {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #0B1E36;
+      color: #FFFFFF;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      cursor: pointer;
+      z-index: 999;
+      border: 2px solid #B89047;
+      font-size: 20px;
+      transition: transform 0.2s;
     }
+    .floating-lock:hover { transform: scale(1.08); background-color: #DC2626; }
 
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 440px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 440px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     
     .status-btn-group { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
     .btn-status-opt { padding: 10px; border-radius: 8px; border: 1.5px solid #E2DBCF; font-weight: bold; font-size: 12px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; }
@@ -107,6 +123,11 @@
 </head>
 <body>
 
+  <!-- BOTÓN FLOTANTE DE BLOQUEO / CERRAR SESIÓN -->
+  <div class="floating-lock" onclick="cerrarSesion()" title="Cerrar Sesión / Bloquear">
+    🔒
+  </div>
+
   <div class="brand-header">
     <div class="logo-container">
       <h1 class="logo-title">MARÍA DURÁN</h1>
@@ -115,123 +136,95 @@
     <div class="badge-pwa">PANEL DE GESTIÓN</div>
   </div>
 
-  <div class="main-grid">
-    <div class="card">
-      <!-- RESUMEN ECONÓMICO Y CONTABILIDAD CON FILTRO DE PERIODO -->
-      <div style="background: #FFFDF9; border: 1px solid #B89047; border-radius: 10px; margin-bottom: 15px; padding: 12px 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-family:sans-serif;">
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size: 11px; font-weight: bold; color: #B89047; text-transform: uppercase; letter-spacing: 1px;">📊 Resumen Económico</span>
-              <select id="filtro-periodo-contabilidad" onchange="cargarAgendaSemanal()" style="margin:0; padding:2px 6px; font-size:10px; border-radius:4px; border:1px solid #B89047; background:#FFF; color:#0B1E36; cursor:pointer;">
-                <option value="semana">📅 Semana Actual</option>
-                <option value="mes">📅 Mes Actual</option>
-                <option value="2meses">📅 Últimos 2 Meses</option>
-                <option value="3meses">📅 Últimos 3 Meses</option>
-                <option value="anio">📅 Este Año</option>
-              </select>
-            </div>
-            <div id="stat-ingresos-periodo" style="font-size: 18px; font-weight: bold; color: #0B1E36; margin-top: 4px;">0 €</div>
-          </div>
-          <div style="display:flex; gap:20px; text-align:right; font-size:11px;">
-            <div>
-              <span style="color: #666; display:block;">Sesiones (Periodo)</span>
-              <strong id="stat-sesiones-periodo" style="font-size: 14px; color: #0B1E36;">0</strong>
-            </div>
-            <div>
-              <span style="color: #666; display:block;">Pendiente Bonos (Total)</span>
-              <strong id="stat-pendiente-bonos" style="font-size: 14px; color: #DC2626;">0 €</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-header">
+  <!-- CALENDARIO OCUPANDO TODO EL ANCHO -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title-container">
         <div>
-          <h2 class="card-title">Agenda Semanal — Panel de Gestión (iPad)</h2>
+          <h2 class="card-title">Agenda Semanal — Panel de Gestión</h2>
           <div class="card-subtitle">Sincronización en tiempo real entre iPad y iPhone</div>
         </div>
-        <div class="nav-buttons">
-          <button class="btn" onclick="cambiarSemana(-1)">◄ Sem. Ant.</button>
-          <button class="btn btn-active" id="label-mes">Agosto 2026</button>
-          <button class="btn" onclick="cambiarSemana(1)">Sig. Sem. ►</button>
-        </div>
+        <button class="btn" onclick="cargarAgendaSemanal()" title="Actualizar Agenda" style="padding: 6px 10px; font-size: 14px;">🔄</button>
       </div>
-
-      <div class="calendar-scroll-wrapper">
-        <div class="calendar-grid">
-          <div class="day-header" id="th-0">Lunes</div>
-          <div class="day-header" id="th-1">Martes</div>
-          <div class="day-header" id="th-2">Miércoles</div>
-          <div class="day-header" id="th-3">Jueves</div>
-          <div class="day-header" id="th-4">Viernes</div>
-          <div class="day-header" id="th-5">Sábado</div>
-
-          <div class="day-column" id="col-0"></div>
-          <div class="day-column" id="col-1"></div>
-          <div class="day-column" id="col-2"></div>
-          <div class="day-column" id="col-3"></div>
-          <div class="day-column" id="col-4"></div>
-          <div class="day-column" id="col-5"></div>
-        </div>
-      </div>
-
-      <div class="legend-box">
-        <strong>Leyenda de colores:</strong> &nbsp;<br>
-        <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
-        <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
-      </div>
-
-      <div class="block-manager-box">
-        <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
-        <form id="form-bloqueo" onsubmit="guardarBloqueo(event)" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:center;">
-          <input type="date" id="blk_fecha" required style="margin:0; padding:6px; font-size:12px;">
-          <select id="blk_hora" style="margin:0; padding:6px; font-size:12px;">
-            <option value="ALL">Día Completo</option>
-            <option value="09:00">09:00 h</option>
-            <option value="10:00">10:00 h</option>
-            <option value="11:00">11:00 h</option>
-            <option value="12:00">12:00 h</option>
-            <option value="13:00">13:00 h</option>
-            <option value="17:00">17:00 h</option>
-            <option value="18:00">18:00 h</option>
-            <option value="19:00">19:00 h</option>
-            <option value="20:00">20:00 h</option>
-          </select>
-          <input type="text" id="blk_motivo" placeholder="Motivo (Ej. Médico)" style="margin:0; padding:6px; font-size:12px;">
-          <button type="submit" class="btn btn-gold" style="padding:7px 12px; font-size:11px;">+ Bloquear</button>
-        </form>
-
-        <div id="lista-bloqueos-activos" style="margin-top:10px; font-size:11px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+      <div class="nav-buttons">
+        <button class="btn" onclick="cambiarSemana(-1)">◄ Sem. Ant.</button>
+        <button class="btn btn-active" id="label-mes">Agosto 2026</button>
+        <button class="btn" onclick="cambiarSemana(1)">Sig. Sem. ►</button>
       </div>
     </div>
 
-    <div>
-      <div class="card">
-        <div class="side-title">Acciones Rápidas (iPad/iPhone)</div>
-        <div class="quick-action-item" onclick="abrirModalGestorBonos()">
-          <span>🎟 Gestor de Bonos y Pagos</span>
-          <span style="font-size:10px; color:#B89047; background:#FFFDF9; padding:2px 6px; border-radius:10px; border:1px solid #B89047;">Activo</span>
-        </div>
-        <div class="quick-action-item" onclick="abrirModalClientes()">
-          <span>👥 Ficha de Clientes y Notas</span>
-        </div>
-        <div class="quick-action-item" onclick="abrirModalRecordatorios48h()">
-          <span>💬 Recordatorios 48h (Próximos)</span>
-        </div>
-        <div class="quick-action-item" onclick="cargarAgendaSemanal()">
-          <span>🔄 Actualizar Lista</span>
-        </div>
-        <div class="quick-action-item" style="color: #DC2626;" onclick="cerrarSesion()">
-          <span>🔒 Cerrar Sesión / Bloquear</span>
-        </div>
-      </div>
+    <div class="calendar-scroll-wrapper">
+      <div class="calendar-grid">
+        <div class="day-header" id="th-0">Lunes</div>
+        <div class="day-header" id="th-1">Martes</div>
+        <div class="day-header" id="th-2">Miércoles</div>
+        <div class="day-header" id="th-3">Jueves</div>
+        <div class="day-header" id="th-4">Viernes</div>
+        <div class="day-header" id="th-5">Sábado</div>
 
-      <div class="phone-frame">
-        <div class="phone-screen">
-          <iframe src="index.html" style="width:100%; height:460px; border:none; border-radius:12px;"></iframe>
-        </div>
+        <div class="day-column" id="col-0"></div>
+        <div class="day-column" id="col-1"></div>
+        <div class="day-column" id="col-2"></div>
+        <div class="day-column" id="col-3"></div>
+        <div class="day-column" id="col-4"></div>
+        <div class="day-column" id="col-5"></div>
+      </div>
+    </div>
+
+    <div class="legend-box">
+      <strong>Leyenda de colores:</strong> &nbsp;<br>
+      <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
+    </div>
+
+    <div class="block-manager-box">
+      <strong style="font-size:12px; color:#0B1E36; display:block; margin-bottom:8px;">🚫 Bloqueo Manual de Disponibilidad (Días u Horas)</strong>
+      <form id="form-bloqueo" onsubmit="guardarBloqueo(event)" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:center;">
+        <input type="date" id="blk_fecha" required style="margin:0; padding:6px; font-size:12px;">
+        <select id="blk_hora" style="margin:0; padding:6px; font-size:12px;">
+          <option value="ALL">Día Completo</option>
+          <option value="09:00">09:00 h</option>
+          <option value="10:00">10:00 h</option>
+          <option value="11:00">11:00 h</option>
+          <option value="12:00">12:00 h</option>
+          <option value="13:00">13:00 h</option>
+          <option value="17:00">17:00 h</option>
+          <option value="18:00">18:00 h</option>
+          <option value="19:00">19:00 h</option>
+          <option value="20:00">20:00 h</option>
+        </select>
+        <input type="text" id="blk_motivo" placeholder="Motivo (Ej. Médico)" style="margin:0; padding:6px; font-size:12px;">
+        <button type="submit" class="btn btn-gold" style="padding:7px 12px; font-size:11px;">+ Bloquear</button>
+      </form>
+
+      <div id="lista-bloqueos-activos" style="margin-top:10px; font-size:11px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- PANEL DE ACCIONES RÁPIDAS DEBAJO DEL CALENDARIO -->
+  <div class="card">
+    <div class="side-title">Acciones Rápidas (Gestión)</div>
+    <div class="actions-grid">
+      <div class="quick-action-item" onclick="abrirModalCitaManual()">
+        <span>✚ Añadir Cita Manual</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
+      </div>
+      <div class="quick-action-item" onclick="abrirModalRecordatorios48h()">
+        <span>💬 Recordatorios 48h (Próximos)</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
+      </div>
+      <div class="quick-action-item" onclick="abrirModalGestorBonos()">
+        <span>🎟 Gestión de Bonos</span>
+        <span style="font-size:10px; color:#B89047; background:#FFFDF9; padding:2px 6px; border-radius:10px; border:1px solid #B89047;">Activo</span>
+      </div>
+      <div class="quick-action-item" onclick="abrirModalResumenEconomico()">
+        <span>📊 Resumen Económico</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
+      </div>
+      <div class="quick-action-item" onclick="abrirModalClientes()">
+        <span>👥 Ficha de Clientes y Notas</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
     </div>
   </div>
@@ -251,10 +244,63 @@
     </div>
   </div>
 
+  <!-- MODAL: AÑADIR CITA MANUAL (INDEX EMBEBIDO) -->
+  <div class="modal" id="modal-cita-manual">
+    <div class="modal-content" style="max-width: 460px; padding: 10px;">
+      <div class="modal-header" style="padding: 10px 15px; margin-bottom: 0;">
+        <span>✚ Nueva Cita / Bono (Manual)</span>
+        <button class="btn" onclick="cerrarModalCitaManual()" style="background:#ECE7DF;">✕ Cerrar</button>
+      </div>
+      <div style="width: 100%; height: 550px; overflow: hidden; border-radius: 0 0 12px 12px;">
+        <iframe src="index.html" style="width: 100%; height: 100%; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESUMEN ECONÓMICO -->
+  <div class="modal" id="modal-resumen-economico">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <span>📊 Resumen Económico</span>
+        <button class="btn" onclick="cerrarModalResumenEconomico()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <div style="background: #FFFDF9; border: 1px solid #B89047; border-radius: 10px; padding: 14px; font-family: sans-serif;">
+        <div style="margin-bottom: 10px;">
+          <label style="font-size: 11px; font-weight: bold; color: #B89047; text-transform: uppercase;">Seleccionar Periodo:</label>
+          <select id="filtro-periodo-contabilidad" onchange="cargarAgendaSemanal()" style="margin-top: 4px;">
+            <option value="semana">📅 Semana Actual</option>
+            <option value="mes">📅 Mes Actual</option>
+            <option value="2meses">📅 Últimos 2 Meses</option>
+            <option value="3meses">📅 Últimos 3 Meses</option>
+            <option value="anio">📅 Este Año</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
+          <div>
+            <span style="font-size: 11px; color: #666; display:block;">Ingresos Totales</span>
+            <div id="stat-ingresos-periodo" style="font-size: 20px; font-weight: bold; color: #0B1E36;">0 €</div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 11px; color: #666; display:block;">Sesiones</span>
+            <strong id="stat-sesiones-periodo" style="font-size: 14px; color: #0B1E36;">0</strong>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 11px; color: #666; display:block;">Pendiente Bonos</span>
+            <strong id="stat-pendiente-bonos" style="font-size: 14px; color: #DC2626;">0 €</strong>
+          </div>
+        </div>
+      </div>
+      <button class="btn" style="width:100%; padding:10px; margin-top:15px; background:#ECE7DF; color:#333;" onclick="cerrarModalResumenEconomico()">Cerrar</button>
+    </div>
+  </div>
+
   <!-- MODAL FICHA DE CLIENTES Y NOTAS -->
   <div class="modal" id="modal-clientes">
     <div class="modal-content" style="max-width: 480px;">
-      <div class="modal-header">👥 Ficha de Clientes y Notas</div>
+      <div class="modal-header">
+        <span>👥 Ficha de Clientes y Notas</span>
+        <button class="btn" onclick="cerrarModalClientes()" style="background:#ECE7DF;">✕</button>
+      </div>
       <input type="text" id="input-buscar-cliente" placeholder="🔍 Buscar por nombre o teléfono..." oninput="filtrarClientes()" style="margin-bottom: 12px;">
       
       <div id="lista-clientes-container" style="max-height: 300px; overflow-y: auto;">
@@ -279,12 +325,15 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS (SOLO CONTROL DE PAGOS Y SALDOS) -->
+  <!-- GESTOR DE BONOS -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
-      <div class="modal-header">🎟 Gestor de Bonos y Control de Pagos</div>
+      <div class="modal-header">
+        <span>🎟 Gestor de Bonos y Pagos</span>
+        <button class="btn" onclick="cerrarModalGestorBonos()" style="background:#ECE7DF;">✕</button>
+      </div>
       <div style="font-size: 11px; color: #666; font-family: sans-serif; margin-bottom: 12px;">
-        💡 Para crear un nuevo bono, utiliza el formulario interactivo de la derecha (Mini-Index).
+        💡 Para crear un nuevo bono, utiliza el botón <b>"Añadir Cita Manual"</b> y selecciona el servicio de bono.
       </div>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
@@ -299,7 +348,10 @@
   <!-- MODAL INTEGRADO PARA REGISTRAR PAGO A CUENTA -->
   <div class="modal" id="modal-agregar-pago">
     <div class="modal-content" style="max-width:380px;">
-      <div class="modal-header">💳 Registrar Pago / Abono</div>
+      <div class="modal-header">
+        <span>💳 Registrar Pago / Abono</span>
+        <button class="btn" onclick="cerrarModalAgregarPago()" style="background:#ECE7DF;">✕</button>
+      </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:15px; line-height:1.4;" id="info-pago-bono">
         Cargando detalles...
       </div>
@@ -316,7 +368,10 @@
   <!-- MODAL GESTION CITA -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
-      <div class="modal-header" id="g-cliente-nombre">Cliente</div>
+      <div class="modal-header">
+        <span id="g-cliente-nombre">Cliente</span>
+        <button class="btn" onclick="cerrarModalGestion()" style="background:#ECE7DF;">✕</button>
+      </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="g-detalles">Cargando detalles...</div>
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
@@ -336,7 +391,7 @@
   <div class="modal" id="modal-confirmar-anulacion">
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
-      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center;">¿Anular Cita?</div>
+      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center; justify-content: center;">¿Anular Cita?</div>
       <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;" id="c-mensaje-anulacion"></p>
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Anular Cita</button>
@@ -345,18 +400,13 @@
     </div>
   </div>
 
-  <div class="modal" id="modal-notificacion-exito">
-    <div class="modal-content" style="text-align: center;">
-      <div style="font-size: 42px; color: #1e8e3e; margin-bottom: 4px;">✓</div>
-      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center;">¡Operación realizada!</div>
-      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px;">Los datos se han registrado correctamente.</p>
-      <button class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;" onclick="cerrarModalExito()">Aceptar</button>
-    </div>
-  </div>
-
+  <!-- MODAL RECORDATORIOS -->
   <div class="modal" id="modal-recordatorios">
     <div class="modal-content">
-      <div class="modal-header">💬 Recordatorios Próximos (48h)</div>
+      <div class="modal-header">
+        <span>💬 Recordatorios Próximos (48h)</span>
+        <button class="btn" onclick="cerrarModalRecordatorios48h()" style="background:#ECE7DF;">✕</button>
+      </div>
       <p style="font-size:12px; font-family:sans-serif; color:#666; margin-bottom:15px;">Clientes con cita en los próximos 2 días:</p>
       <div id="lista-recordatorios-48h" style="max-height: 280px; overflow-y: auto;"></div>
       <button class="btn" style="width:100%; padding:10px; margin-top:10px; background:#ECE7DF; color:#333;" onclick="cerrarModalRecordatorios48h()">Cerrar</button>
@@ -575,6 +625,24 @@
     } catch (e) { console.error(e); }
 
     cargarBloqueosLista();
+  }
+
+  // MODAL CITA MANUAL (INDEX EMBEBIDO)
+  function abrirModalCitaManual() {
+    document.getElementById('modal-cita-manual').style.display = 'flex';
+  }
+  function cerrarModalCitaManual() {
+    document.getElementById('modal-cita-manual').style.display = 'none';
+    cargarAgendaSemanal(); // Recargar agenda por si se ha añadido alguna cita
+  }
+
+  // MODAL RESUMEN ECONÓMICO
+  function abrirModalResumenEconomico() {
+    document.getElementById('modal-resumen-economico').style.display = 'flex';
+    cargarAgendaSemanal();
+  }
+  function cerrarModalResumenEconomico() {
+    document.getElementById('modal-resumen-economico').style.display = 'none';
   }
 
   // FICHA DE CLIENTES Y NOTAS
