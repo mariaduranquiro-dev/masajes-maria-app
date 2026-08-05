@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>María Durán - Agenda Semanal Panel de Gestión</title>
+  <title>María Durán - Agenda Semanal</title>
 
   <!-- Configuración PWA / App Instalable -->
   <link rel="manifest" href="manifest-admin.json">
@@ -66,6 +66,28 @@
     .chip-bono { background-color: #F3E8FD; color: #681DA8; border-left-color: #9333EA; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; }
+
+    /* ESTILO PARA LOS HUECOS LIBRES EXPANDIDOS */
+    .slot-empty {
+      background: #FFFFFF;
+      border: 1px dashed #D1C7B7;
+      border-radius: 5px;
+      padding: 6px;
+      margin-bottom: 6px;
+      font-size: 10px;
+      color: #7A8B9E;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .slot-empty:hover {
+      border-color: #B89047;
+      background-color: #FFFDF9;
+      color: #B89047;
+      cursor: pointer;
+    }
 
     .chip-time { font-weight: bold; display: inline-block; }
     .chip-name { font-weight: bold; display: block; font-size: 11px; }
@@ -510,6 +532,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   const PIN_ACCESO = "1234";
 
+  const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
   let bonoPagoSeleccionado = null;
@@ -665,6 +688,7 @@
     verificarNotificacionesRecientes(false);
   }
 
+  // CALENDARIO SIEMPRE EXPANDIDO CON HUECOS FIJOS
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -677,7 +701,6 @@
       const numDia = diaCurrent.getDate();
       const isToday = formatDate(new Date()) === formatDate(diaCurrent);
       document.getElementById(`th-${i}`).innerText = `${diasNombres[i]} ${numDia}`;
-      document.getElementById(`col-${i}`).innerHTML = `<div class="day-num ${isToday ? 'today' : ''}">${numDia} ${isToday ? '★' : ''}</div>`;
     }
 
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -701,50 +724,81 @@
         });
       }
 
-      if (bloqueos && bloqueos.length > 0) {
-        bloqueos.forEach(blk => {
-          const indexCol = fechasSemana.indexOf(blk.fecha);
-          if (indexCol !== -1) {
-            const col = document.getElementById(`col-${indexCol}`);
-            const horaTxt = (!blk.hora || blk.hora === 'ALL') ? 'Día Completo' : blk.hora.substring(0,5);
-            col.innerHTML += `
+      // RENDERIZAR CADA COLUMNA CON SU ESTRUCTURA FIJA DE HORAS (09:00 - 13:00 y 17:00 - 20:00)
+      for (let i = 0; i < 6; i++) {
+        const fechaStr = fechasSemana[i];
+        const isToday = formatDate(new Date()) === fechaStr;
+        const col = document.getElementById(`col-${i}`);
+        
+        let colHtml = `<div class="day-num ${isToday ? 'today' : ''}">${new Date(fechaStr).getDate()} ${isToday ? '★' : ''}</div>`;
+
+        // Ver si el día entero está bloqueado
+        let diaBloqueadoCompleto = false;
+        let bloqueosDelDia = bloqueos ? bloqueos.filter(b => b.fecha === fechaStr) : [];
+        if (bloqueosDelDia.some(b => !b.hora || b.hora === 'ALL')) {
+          diaBloqueadoCompleto = true;
+        }
+
+        HORARIOS_SLOTS.forEach(slotHora => {
+          if (diaBloqueadoCompleto) {
+            colHtml += `
               <div class="chip chip-bloqueo">
-                <span class="chip-time">🔒 ${horaTxt}</span>
+                <span class="chip-time">🔒 ${slotHora}</span>
                 <span class="chip-name">BLOQUEADO</span>
-                <div class="chip-detail">${blk.motivo || 'No disponible'}</div>
+                <div class="chip-detail">Día completo</div>
               </div>
             `;
+            return;
           }
-        });
-      }
 
-      if (citasSemana && citasSemana.length > 0) {
-        citasSemana.forEach(cita => {
-          const indexCol = fechasSemana.indexOf(cita.fecha);
-          if (indexCol !== -1) {
-            const col = document.getElementById(`col-${indexCol}`);
-            const esBonoPagado100 = (cita.servicio_id === 2 || cita.estado === 'bono') && bonosPagadosMap[cita.cliente_telefono];
+          // Verificar si hay bloqueo específico en esta hora
+          const bloqueoHora = bloqueosDelDia.find(b => b.hora && b.hora.substring(0,5) === slotHora);
+          if (bloqueoHora) {
+            colHtml += `
+              <div class="chip chip-bloqueo">
+                <span class="chip-time">🔒 ${slotHora}</span>
+                <span class="chip-name">BLOQUEADO</span>
+                <div class="chip-detail">${bloqueoHora.motivo || 'No disponible'}</div>
+              </div>
+            `;
+            return;
+          }
 
+          // Verificar si hay cita en este slot
+          const citaEnSlot = citasSemana ? citasSemana.find(c => c.fecha === fechaStr && c.hora.substring(0,5) === slotHora) : null;
+
+          if (citaEnSlot) {
+            const esBonoPagado100 = (citaEnSlot.servicio_id === 2 || citaEnSlot.estado === 'bono') && bonosPagadosMap[citaEnSlot.cliente_telefono];
             let chipClass = 'chip-pendiente';
-            let estadoEtiqueta = cita.estado ? cita.estado.toUpperCase() : 'PENDIENTE';
+            let estadoEtiqueta = citaEnSlot.estado ? citaEnSlot.estado.toUpperCase() : 'PENDIENTE';
 
-            if (cita.estado === 'pagado' || esBonoPagado100) {
+            if (citaEnSlot.estado === 'pagado' || esBonoPagado100) {
               chipClass = 'chip-pagado';
               if (esBonoPagado100) estadoEtiqueta = 'BONO PAGADO';
-            } else if (cita.estado === 'bono') {
+            } else if (citaEnSlot.estado === 'bono') {
               chipClass = 'chip-bono';
             }
 
-            const precioTexto = cita.servicio_id === 2 ? 'Bono' : '35€';
-            col.innerHTML += `
-              <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(cita)})'>
-                <span class="chip-time">${cita.hora.substring(0,5)}</span>
-                <span class="chip-name">${cita.cliente_nombre}</span>
+            const precioTexto = citaEnSlot.servicio_id === 2 ? 'Bono' : '35€';
+            colHtml += `
+              <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(citaEnSlot)})'>
+                <span class="chip-time">${citaEnSlot.hora.substring(0,5)}</span>
+                <span class="chip-name">${citaEnSlot.cliente_nombre}</span>
                 <div class="chip-detail">${precioTexto} • ${estadoEtiqueta}</div>
+              </div>
+            `;
+          } else {
+            // HUECO LIBRE VISIBLE
+            colHtml += `
+              <div class="slot-empty" onclick="abrirModalCitaManualConFechaHora('${fechaStr}', '${slotHora}')" title="Hueco libre - Click para añadir cita">
+                <span class="chip-time">${slotHora}</span>
+                <span style="font-size:9px; opacity:0.8;">Libre ⚪</span>
               </div>
             `;
           }
         });
+
+        col.innerHTML = colHtml;
       }
 
       // CÁLCULO DE CONTABILIDAD
@@ -826,10 +880,19 @@
     verificarNotificacionesRecientes(false);
   }
 
-  function abrirModalCitaManual() { 
-    document.getElementById('iframe-cita-manual').src = "index.html?admin=true";
+  function abrirModalCitaManual(fechaPrefill = '', horaPrefill = '') { 
+    let url = "index.html?admin=true";
+    if (fechaPrefill && horaPrefill) {
+      url += `&fecha=${fechaPrefill}&hora=${horaPrefill}`;
+    }
+    document.getElementById('iframe-cita-manual').src = url;
     document.getElementById('modal-cita-manual').style.display = 'flex'; 
   }
+
+  function abrirModalCitaManualConFechaHora(fecha, hora) {
+    abrirModalCitaManual(fecha, hora);
+  }
+
   function cerrarModalCitaManual() { 
     document.getElementById('modal-cita-manual').style.display = 'none'; 
     document.getElementById('iframe-cita-manual').src = ""; 
