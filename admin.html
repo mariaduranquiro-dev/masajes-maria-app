@@ -466,7 +466,7 @@
     </div>
   </div>
 
-  <!-- MODAL GESTION CITA (CON OPCIONES DE BONO 3 Y BONO 5) -->
+  <!-- MODAL GESTION CITA (CON BOTÓN DE REGISTRAR PAGO DIRECTO) -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
       <div class="modal-header">
@@ -474,6 +474,10 @@
         <button class="btn" onclick="cerrarModalGestion()" style="background:#ECE7DF;">✕</button>
       </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="g-detalles">Cargando detalles...</div>
+      
+      <!-- BOTÓN DE REGISTRAR PAGO (PARCIAL O TOTAL) -->
+      <button class="btn" style="background:#B89047; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="registrarPagoDesdeGestionCita()">💳 Registrar Pago (Parcial o Total)</button>
+
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
         <button class="btn-status-opt" style="background:#E6F4EA; color:#137333;" onclick="setEstado('pagado')"><span>✓ Marcar como PAGADO (Efectivo/Bizum)</span></button>
@@ -548,6 +552,11 @@
   let bonoPagoSeleccionado = null;
   let avisosGlobalCache = [];
   let slotSeleccionadoAdmin = null;
+  
+  // Variables para el bono de la cita actual en gestión
+  let bonoIdActualCita = null;
+  let bonoPrecioTotalActual = 0;
+  let bonoPagadoActual = 0;
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -1206,12 +1215,19 @@
     const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : 'Quiromasaje (35€)';
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
 
+    bonoIdActualCita = null;
+    bonoPrecioTotalActual = 0;
+    bonoPagadoActual = 0;
+
     let infoBonoExtra = '';
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', cita.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
       if (bonos && bonos.length > 0) {
         const b = bonos[0];
+        bonoIdActualCita = b.id;
+        bonoPrecioTotalActual = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+        bonoPagadoActual = b.monto_pagado !== undefined ? b.monto_pagado : bonoPrecioTotalActual;
         const usadas = b.sesiones_totales - b.sesiones_restantes;
         infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${usadas} / ${b.sesiones_totales} sesiones`;
       }
@@ -1225,6 +1241,17 @@
   }
 
   function cerrarModalGestion() { document.getElementById('modal-gestionar-cita').style.display = 'none'; }
+
+  // REGISTRAR PAGO DIRECTAMENTE DESDE LA GESTIÓN DE LA CITA
+  function registrarPagoDesdeGestionCita() {
+    if (!citaSeleccionada) return;
+    if (bonoIdActualCita) {
+      cerrarModalGestion();
+      abrirModalAbonoPago(bonoIdActualCita, bonoPagadoActual, bonoPrecioTotalActual, citaSeleccionada.cliente_nombre);
+    } else {
+      alert("Este cliente no tiene ningún bono activo asociado. Los pagos parciales o totales se gestionan sobre los bonos.");
+    }
+  }
 
   function abrirModalAdminModificarCita() {
     if (!citaSeleccionada) return;
