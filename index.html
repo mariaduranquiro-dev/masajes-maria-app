@@ -320,6 +320,17 @@
     return fechaStr;
   }
 
+  // Normalizador robusto de fechas para evitar fallos de formato en diferentes navegadores
+  function normalizarFecha(val) {
+    if (!val) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const partes = val.split('/');
+    if (partes.length === 3) {
+      return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+    return val;
+  }
+
   function selectService(element, id) {
     document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
@@ -554,7 +565,8 @@
   }
 
   async function actualizarHorariosDisponibles() {
-    const fechaVal = document.getElementById('fecha').value;
+    const rawFechaVal = document.getElementById('fecha').value;
+    const fechaVal = normalizarFecha(rawFechaVal);
     const container = document.getElementById('time-slots');
     if (!fechaVal) return;
 
@@ -676,6 +688,7 @@
 
     inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
     inputFecha.addEventListener('change', actualizarHorariosDisponibles);
+    inputFecha.addEventListener('input', actualizarHorariosDisponibles);
     
     actualizarHorariosDisponibles().then(() => {
       if (prefillHora) {
@@ -710,7 +723,8 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const servicio_id = parseInt(document.getElementById('servicio_id').value, 10);
-      const fecha = document.getElementById('fecha').value;
+      const rawFecha = document.getElementById('fecha').value;
+      const fecha = normalizarFecha(rawFecha);
       const cliente_nombre = document.getElementById('nombre').value;
       const cliente_telefono = document.getElementById('telefono').value.trim();
       const nota = document.getElementById('nota').value;
