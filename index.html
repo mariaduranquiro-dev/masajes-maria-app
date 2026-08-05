@@ -165,9 +165,7 @@
     <input type="date" id="fecha" required>
 
     <label>Horarios disponibles *</label>
-    <div id="time-container">
-      <div class="time-slots" id="time-slots"></div>
-    </div>
+    <div class="time-slots" id="time-slots"></div>
     <input type="hidden" id="hora" value="">
 
     <div class="section-title" style="margin-top: 20px;">3. Tus datos de contacto</div>
@@ -639,7 +637,6 @@
     const ahora = new Date();
     const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
 
-    let slotsHtml = '<div class="time-slots" id="time-slots">';
     let haySlotsVisibles = false;
 
     HORARIOS_ESTANDAR.forEach(horaStr => {
@@ -652,25 +649,26 @@
 
       haySlotsVisibles = true;
       const estaOcupado = horasOcupadas.includes(horaStr);
+      const chip = document.createElement('div');
       if (estaOcupado) {
-        slotsHtml += `<div class="time-chip occupied">${horaStr} 🔒</div>`;
+        chip.className = 'time-chip occupied';
+        chip.innerText = horaStr + ' 🔒';
       } else {
-        const isSel = !seleccionAutoHecha ? 'selected' : '';
+        chip.className = 'time-chip';
+        chip.innerText = horaStr;
+        chip.onclick = function() { selectTime(this, horaStr); };
         if (!seleccionAutoHecha) {
+          chip.classList.add('selected');
           document.getElementById('hora').value = horaStr;
           seleccionAutoHecha = true;
         }
-        slotsHtml += `<div class="time-chip ${isSel}" onclick="selectTime(this, '${horaStr}')">${horaStr}</div>`;
       }
+      container.appendChild(chip);
     });
-
-    slotsHtml += '</div>';
 
     if (!haySlotsVisibles || !seleccionAutoHecha) {
       document.getElementById('hora').value = '';
       container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">⚠️ No quedan huecos libres para la fecha seleccionada.</div>';
-    } else {
-      container.innerHTML = slotsHtml;
     }
   }
 
@@ -691,6 +689,7 @@
     inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
     inputFecha.addEventListener('change', actualizarHorariosDisponibles);
     inputFecha.addEventListener('input', actualizarHorariosDisponibles);
+    inputFecha.addEventListener('blur', actualizarHorariosDisponibles);
     
     actualizarHorariosDisponibles().then(() => {
       if (prefillHora) {
