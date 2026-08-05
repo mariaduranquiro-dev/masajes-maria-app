@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS (CON EDICIÓN MANUAL Y FECHA DE PAGO) -->
+  <!-- GESTOR DE BONOS (CON EDICIÓN MANUAL, FECHA DE PAGO Y ELIMINAR BONO) -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -435,7 +435,7 @@
       </div>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
-        Bonos Activos y Estado de Pago:
+        Bonos Registrados:
       </div>
       <div id="lista-bonos-activos" style="max-height:300px; overflow-y:auto;"></div>
 
@@ -843,7 +843,7 @@
           const citaEnSlot = citasSemana ? citasSemana.find(c => c.fecha === fechaStr && c.hora.substring(0,5) === slotHora) : null;
 
           if (citaEnSlot) {
-            const esBonoPagado100 = (citaEnSlot.servicio_id === 2 || citaEnSlot.estado === 'bono') && bonosPagadosMap[citaEnSlot.cliente_telefono];
+            const esBonoPagado100 = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5 || citaEnSlot.estado === 'bono') && bonosPagadosMap[citaEnSlot.cliente_telefono];
             let chipClass = 'chip-pendiente';
             let estadoEtiqueta = citaEnSlot.estado ? citaEnSlot.estado.toUpperCase() : 'PENDIENTE';
 
@@ -1012,7 +1012,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1036,7 +1036,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS MEJORADO
+  // GESTOR DE BONOS (CON BOTÓN DE BORRAR BONO DUPLICADO/ERRÓNEO)
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     cargarListaBonos(); 
@@ -1072,7 +1072,10 @@
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
               <div>${badgePago}</div>
-              ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Pagar</button>` : ''}
+              <div style="display:flex; gap:6px;">
+                ${pendiente > 0 ? `<button class="btn btn-gold" style="padding:4px 8px; font-size:10px;" onclick="abrirModalAbonoPago(${b.id}, ${pagado}, ${precioTotal}, '${b.cliente_nombre}')">💳 Pagar</button>` : ''}
+                <button class="btn btn-danger" style="padding:4px 8px; font-size:10px;" onclick="eliminarBono(${b.id})">🗑 Borrar</button>
+              </div>
             </div>
           </div>
         `;
@@ -1094,6 +1097,19 @@
         cargarAgendaSemanal();
       }
     } catch (err) { alert("Error al modificar sesiones: " + err.message); }
+  }
+
+  async function eliminarBono(idBono) {
+    if (confirm("¿Estás segura de eliminar este bono? Esto corregirá cualquier duplicidad en tu resumen económico.")) {
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        await supabase.from('bonos').delete().eq('id', idBono);
+        cargarListaBonos();
+        cargarAgendaSemanal();
+      } catch (err) {
+        alert("Error al eliminar bono: " + err.message);
+      }
+    }
   }
 
   function abrirModalAbonoPago(idBono, montoActual, precioTotal, clienteNombre) {
@@ -1130,6 +1146,46 @@
       abrirModalGestorBonos();
     }
   }
+
+  async function abrirModalRecordatorios48h() {
+    const container = document.getElementById('lista-recordatorios-48h');
+    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
+    document.getElementById('modal-recordatorios').style.display = 'flex';
+    const hoy = new Date(); const en48h = new Date(hoy); en48h.setDate(hoy.getDate() + 2);
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: citas } = await supabase.from('citas').select('*').gte('fecha', formatDate(hoy)).lte('fecha', formatDate(en48h)).order('fecha', { ascending: true });
+      if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
+      let html = '';
+      citas.forEach(cita => {
+        const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
+        const fechaEsp = formatearFechaEspanol(cita.fecha);
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
+
+        html += `
+          <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
+              <span style="font-size:11px; color:#555;">📅 ${fechaEsp} • ⏰ ${cita.hora.substring(0,5)} h</span>
+            </div>
+            <button class="btn" style="background:#25D366; color:#FFF; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="enviarRecordatorio(this, '${linkWs}')">💬 Enviar</button>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
+  }
+
+  function enviarRecordatorio(btnEl, url) {
+    window.open(url, '_blank');
+    btnEl.style.backgroundColor = '#6B7280';
+    btnEl.style.borderColor = '#6B7280';
+    btnEl.style.pointerEvents = 'none';
+    btnEl.innerText = '✓ Enviado';
+  }
+
+  function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
 
   // VENTANA DE GESTIÓN DE CITA (MUESTRA SESIONES RESTANTES SI ES BONO Y CONVIERTE A BONO)
   async function abrirModalGestion(cita) {
@@ -1214,7 +1270,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // Si María la marca como bono, comprobar si tiene bono activo o crearle uno
       if (nuevoEstado === 'bono') {
         const { data: bonosActivos } = await supabase
           .from('bonos')
@@ -1225,7 +1280,6 @@
           .limit(1);
 
         if (!bonosActivos || bonosActivos.length === 0) {
-          // Si no tiene bono activo, le creamos uno por defecto de 3 sesiones con 2 restantes (descontando esta)
           await supabase.from('bonos').insert([{
             cliente_nombre: citaSeleccionada.cliente_nombre,
             cliente_telefono: citaSeleccionada.cliente_telefono,
@@ -1235,7 +1289,6 @@
             monto_pagado: 0
           }]);
         } else {
-          // Si ya tiene bono activo, restarle una sesión
           const bonoActual = bonosActivos[0];
           if (bonoActual.sesiones_restantes > 0) {
             await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes - 1 }).eq('id', bonoActual.id);
