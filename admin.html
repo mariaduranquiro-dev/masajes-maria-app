@@ -169,7 +169,7 @@
     <div class="card-header">
       <div class="card-title-container">
         <div>
-          <h2 class="card-title">Agenda Semanal</h2>
+          <h2 class="card-title">Agenda Semanal — Panel de Gestión</h2>
           <div class="card-subtitle">Sincronización en tiempo real entre iPad y iPhone</div>
         </div>
         <button class="btn" onclick="cargarAgendaSemanal()" title="Actualizar Agenda" style="padding: 6px 10px; font-size: 14px;">🔄</button>
@@ -275,7 +275,7 @@
     </div>
   </div>
 
-  <!-- MODAL: CENTRO DE NOTIFICACIONES (AUTOMÁTICO AL ENTRAR) -->
+  <!-- MODAL: CENTRO DE NOTIFICACIONES -->
   <div class="modal" id="modal-notificaciones">
     <div class="modal-content" style="max-width: 440px;">
       <div class="modal-header">
@@ -486,11 +486,20 @@
   let clienteTelefonoActual = null;
   let avisosGlobalCache = [];
 
+  function formatearFechaEspanol(fechaStr) {
+    if (!fechaStr) return '';
+    const partes = fechaStr.split('-');
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return fechaStr;
+  }
+
   function verificarAccesoGuardado() {
     if (localStorage.getItem('admin_durán_auth') === 'true') {
       document.getElementById('modal-login').style.display = 'none';
       cargarAgendaSemanal();
-      verificarNotificacionesRecientes(true); // Abre el modal automáticamente al entrar si hay avisos
+      verificarNotificacionesRecientes(true);
     } else {
       document.getElementById('modal-login').style.display = 'flex';
     }
@@ -550,7 +559,6 @@
     }
   }
 
-  // GESTIÓN DE AVISOS Y VENTANA EMERGENTE AUTOMÁTICA
   async function verificarNotificacionesRecientes(abrirAutomatico = false) {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -889,7 +897,8 @@
       let html = '';
       bloqueos.forEach(b => {
         const horaTxt = (!b.hora || b.hora === 'ALL') ? 'Día completo' : b.hora.substring(0,5);
-        html += `<span style="background:#FEE2E2; color:#991B1B; padding:3px 8px; border-radius:12px; border:1px solid #FCA5A5; display:inline-flex; align-items:center; gap:4px;">🔒 ${b.fecha} (${horaTxt}) <button onclick="eliminarBloqueo(${b.id})" style="border:none; background:none; color:#DC2626; font-weight:bold; cursor:pointer;">✕</button></span>`;
+        const fechaEspBlk = formatearFechaEspanol(b.fecha);
+        html += `<span style="background:#FEE2E2; color:#991B1B; padding:3px 8px; border-radius:12px; border:1px solid #FCA5A5; display:inline-flex; align-items:center; gap:4px;">🔒 ${fechaEspBlk} (${horaTxt}) <button onclick="eliminarBloqueo(${b.id})" style="border:none; background:none; color:#DC2626; font-weight:bold; cursor:pointer;">✕</button></span>`;
       });
       container.innerHTML = html;
     } catch (err) { console.error(err); }
@@ -971,20 +980,43 @@
       if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
       let html = '';
       citas.forEach(cita => {
-        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${cita.fecha} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
-        html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;"><div><b>${cita.cliente_nombre}</b><br><span style="font-size:11px; color:#555;">📅 ${cita.fecha} • ⏰ ${cita.hora.substring(0,5)} h</span></div><a href="https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}" target="_blank" class="btn" style="background:#25D366; color:#FFF; border:none; text-decoration:none;">💬 Enviar</a></div>`;
+        const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
+        const fechaEsp = formatearFechaEspanol(cita.fecha);
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita de ${servicioTxt} el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. Si necesitas modificar o anular la cita, avísanos con antelación. ¡Gracias!`);
+        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
+
+        html += `
+          <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
+              <span style="font-size:11px; color:#555;">📅 ${fechaEsp} • ⏰ ${cita.hora.substring(0,5)} h</span>
+            </div>
+            <button class="btn" style="background:#25D366; color:#FFF; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="enviarRecordatorio(this, '${linkWs}')">💬 Enviar</button>
+          </div>
+        `;
       });
       container.innerHTML = html;
     } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
   }
+
+  function enviarRecordatorio(btnEl, url) {
+    window.open(url, '_blank');
+    btnEl.style.backgroundColor = '#6B7280';
+    btnEl.style.borderColor = '#6B7280';
+    btnEl.style.pointerEvents = 'none';
+    btnEl.innerText = '✓ Enviado';
+  }
+
   function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
 
   function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     const servicioTxt = cita.servicio_id === 2 ? 'Sesión de Bono' : 'Quiromasaje (35€)';
-    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${cita.fecha}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la consulta de María Durán...`);
+    const fechaEspCita = formatearFechaEspanol(cita.fecha);
+    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
+    
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
@@ -1000,7 +1032,8 @@
 
   function pedirConfirmacionAnulacion() {
     if (!citaSeleccionada) return;
-    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a borrar la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${citaSeleccionada.fecha}</b> a las <b>${citaSeleccionada.hora}</b>.`;
+    const fechaEspCita = formatearFechaEspanol(citaSeleccionada.fecha);
+    document.getElementById('c-mensaje-anulacion').innerHTML = `Vas a borrar la cita de <b>${citaSeleccionada.cliente_nombre}</b> el <b>${fechaEspCita}</b> a las <b>${citaSeleccionada.hora}</b>.`;
     document.getElementById('modal-gestionar-cita').style.display = 'none';
     document.getElementById('modal-confirmar-anulacion').style.display = 'flex';
   }
