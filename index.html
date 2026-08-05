@@ -691,21 +691,7 @@
     inputFecha.addEventListener('input', actualizarHorariosDisponibles);
     inputFecha.addEventListener('blur', actualizarHorariosDisponibles);
     
-    actualizarHorariosDisponibles().then(() => {
-      if (prefillHora) {
-        if (isAdminMode) {
-          document.getElementById('input_hora_libre').value = prefillHora;
-          document.getElementById('hora').value = prefillHora;
-        } else {
-          const chips = document.querySelectorAll('#time-slots .time-chip');
-          chips.forEach(chip => {
-            if (chip.innerText.startsWith(prefillHora)) {
-              chip.click();
-            }
-          });
-        }
-      }
-    });
+    actualizarHorariosDisponibles();
   });
 
   document.getElementById('booking-form').addEventListener('submit', async function(e) {
