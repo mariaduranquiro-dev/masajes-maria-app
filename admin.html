@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS -->
+  <!-- GESTOR DE BONOS (CON FORMATO DE SESIONES CRECIENTE Y BOTÓN BORRAR) -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -1044,7 +1044,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS (CON BOTÓN DE BORRAR BONO DUPLICADO/ERRÓNEO)
+  // GESTOR DE BONOS (FORMATO DE SESIONES CRECIENTE: EJ. 1/3, 2/3...)
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     cargarListaBonos(); 
@@ -1064,6 +1064,7 @@
         const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
         const pendiente = precioTotal - pagado;
         const badgePago = (pendiente <= 0) ? `<span class="badge-pago-ok">✓ Pagado (${precioTotal}€)</span>` : `<span class="badge-pago-pendiente">🔴 Pendiente: ${pendiente}€</span>`;
+        const usadas = b.sesiones_totales - b.sesiones_restantes;
         
         html += `
           <div class="bono-card">
@@ -1073,9 +1074,9 @@
                 <span style="font-size:10px; color:#666;">📞 ${b.cliente_telefono}</span>
               </div>
               <div style="display:flex; align-items:center; gap:4px; background:#FFF; border:1px solid #B89047; padding:2px 6px; border-radius:10px;">
-                <span style="font-size:10px; font-weight:bold; color:#B89047;">Sesiones: ${b.sesiones_restantes}/${b.sesiones_totales}</span>
-                <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, -1)">-</button>
-                <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, 1)">+</button>
+                <span style="font-size:10px; font-weight:bold; color:#B89047;">Sesiones: ${usadas}/${b.sesiones_totales}</span>
+                <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, 1)">-</button>
+                <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBono(${b.id}, -1)">+</button>
               </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E2DBCF; padding-top:6px; margin-top:4px;">
@@ -1098,8 +1099,9 @@
       const { data: bono } = await supabase.from('bonos').select('*').eq('id', idBono).single();
       if (bono) {
         let nuevasRestantes = bono.sesiones_restantes + cambio;
+        const maxRestantes = bono.sesiones_totales - 1;
         if (nuevasRestantes < 0) nuevasRestantes = 0;
-        if (nuevasRestantes > bono.sesiones_totales) nuevasRestantes = bono.sesiones_totales;
+        if (nuevasRestantes > maxRestantes) nuevasRestantes = maxRestantes;
         await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', idBono);
         cargarListaBonos();
         cargarAgendaSemanal();
@@ -1195,7 +1197,7 @@
 
   function cerrarModalRecordatorios48h() { document.getElementById('modal-recordatorios').style.display = 'none'; }
 
-  // VENTANA DE GESTIÓN DE CITA (MUESTRA SESIONES RESTANTES SI ES BONO Y CONVIERTE A BONO)
+  // VENTANA DE GESTIÓN DE CITA (MUESTRA FORMATO CRECIENTE DE SESIONES)
   async function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
@@ -1209,7 +1211,8 @@
       const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', cita.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
       if (bonos && bonos.length > 0) {
         const b = bonos[0];
-        infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${b.sesiones_restantes} / ${b.sesiones_totales} sesiones restantes`;
+        const usadas = b.sesiones_totales - b.sesiones_restantes;
+        infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${usadas} / ${b.sesiones_totales} sesiones`;
       }
     } catch (err) { console.error(err); }
 
@@ -1272,7 +1275,6 @@
     }
   }
 
-  // CAMBIAR ESTADO DE LA CITA (CONVERSIÓN A BONO FUNCIONAL EN BD)
   async function setEstado(nuevoEstado) {
     if (!citaSeleccionada) return;
     try {
