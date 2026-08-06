@@ -1035,7 +1035,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1065,7 +1065,7 @@
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const lunes = getMonday(fechaReferencia);
       const domingo = new Date(lunes);
-      domingo.setDate(lunes.getDate() + 5); // Lunes a Sábado
+      domingo.setDate(lunes.getDate() + 5);
 
       const fecInicio = formatDate(lunes);
       const fecFin = formatDate(domingo);
@@ -1106,17 +1106,14 @@
         d.setDate(d.getDate() + 1);
       }
 
-      // Crear Canvas vertical de Instagram Story (1080 x 1920)
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
 
-      // 1. Fondo elegante color marfil / pergamino (#F6F3ED)
       ctx.fillStyle = '#F6F3ED';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 2. Decoración superior e inferior estilo mármol / acuarela con tonos azul marino (#0B1E36) y oro (#B89047)
       ctx.fillStyle = '#0B1E36';
       ctx.beginPath();
       ctx.moveTo(0, 0);
@@ -1125,7 +1122,6 @@
       ctx.quadraticCurveTo(540, 360, 0, 240);
       ctx.fill();
 
-      // Franja dorada decorativa
       ctx.strokeStyle = '#B89047';
       ctx.lineWidth = 6;
       ctx.beginPath();
@@ -1133,7 +1129,6 @@
       ctx.quadraticCurveTo(540, 366, 1080, 246);
       ctx.stroke();
 
-      // Decoración inferior
       ctx.fillStyle = '#0B1E36';
       ctx.beginPath();
       ctx.moveTo(0, 1920);
@@ -1142,41 +1137,35 @@
       ctx.quadraticCurveTo(540, 1580, 0, 1700);
       ctx.fill();
 
-      ctx.strokeStyle = '#B89047;';
+      ctx.strokeStyle = '#B89047';
       ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.moveTo(0, 1674);
       ctx.quadraticCurveTo(540, 1574, 1080, 1694);
       ctx.stroke();
 
-      // 3. Logotipo central "MD" con columna vertebral
       ctx.fillStyle = '#0B1E36';
       ctx.font = 'bold 120px Georgia, serif';
       ctx.textAlign = 'center';
       ctx.fillText('M     D', 540, 520);
 
-      // Columna vertebral esquemática en el espacio entre M y D
       ctx.fillStyle = '#0B1E36';
       for (let y = 430; y < 515; y += 14) {
         ctx.fillRect(525, y, 30, 8);
       }
 
-      // Nombre y subtítulo
       ctx.fillStyle = '#0B1E36';
       ctx.font = 'bold 44px Georgia, serif';
       ctx.fillText('MARÍA DURÁN', 540, 610);
 
       ctx.fillStyle = '#B89047';
       ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.letterSpacing = '8px';
       ctx.fillText('— QUIROMASAJISTA —', 540, 660);
 
-      // Título de la sección de huecos
       ctx.fillStyle = '#0B1E36';
       ctx.font = 'bold 36px Georgia, serif';
       ctx.fillText('✨ HUECOS LIBRES ESTA SEMANA ✨', 540, 780);
 
-      // 4. Dibujar los huecos libres disponibles
       let startY = 880;
       const keys = Object.keys(huecosPorDia);
 
@@ -1188,7 +1177,6 @@
         ctx.fillText('¡Gracias por vuestra confianza!', 540, 1020);
       } else {
         keys.forEach((dia) => {
-          // Tarjeta de fondo para cada día
           ctx.fillStyle = '#FFFFFF';
           ctx.strokeStyle = '#E2DBCF';
           ctx.lineWidth = 2;
@@ -1197,13 +1185,11 @@
           ctx.fill();
           ctx.stroke();
 
-          // Día de la semana
           ctx.fillStyle = '#0B1E36';
           ctx.font = 'bold 28px Georgia, serif';
           ctx.textAlign = 'left';
           ctx.fillText('📅 ' + (dia.charAt(0).toUpperCase() + dia.slice(1)), 180, startY + 25);
 
-          // Horas disponibles
           ctx.fillStyle = '#B89047';
           ctx.font = 'bold 28px Arial, sans-serif';
           ctx.textAlign = 'right';
@@ -1213,7 +1199,6 @@
         });
       }
 
-      // Llamada a la acción inferior
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = '#B89047';
       ctx.lineWidth = 3;
@@ -1227,7 +1212,6 @@
       ctx.textAlign = 'center';
       ctx.fillText('📲 ¡RESERVA YA DESDE EL ENLACE DE LA BIO!', 540, 1538);
 
-      // 5. Descargar automáticamente la imagen generada
       const link = document.createElement('a');
       link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -1239,7 +1223,7 @@
     }
   }
 
-  // GESTOR DE BONOS (CON BUSCADOR LUPA)
+  // GESTOR DE BONOS
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     document.getElementById('input-busqueda-bonos').value = '';
