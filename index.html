@@ -170,9 +170,9 @@
 
     <div class="section-title">2. Día y hora</div>
     
-    <!-- ACCESO RÁPIDO: PRÓXIMAS 3 CITAS DISPONIBLES -->
+    <!-- ACCESO RÁPIDO: PRÓXIMAS 3 CITAS DISPONIBLES (CON CAMPANA 🔔) -->
     <div id="quick-slots-box" style="background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 10px; padding: 10px; margin-bottom: 12px;">
-      <div style="font-size: 11px; color: #B89047; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; font-family: sans-serif;">⚡ Próximas citas disponibles:</div>
+      <div style="font-size: 11px; color: #B89047; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; font-family: sans-serif;">🔔 Próximas citas disponibles:</div>
       <div id="quick-slots-buttons" style="display: flex; gap: 6px; flex-wrap: wrap;">
         <span style="font-size: 11px; color: #666; font-family: sans-serif;">Buscando huecos libres...</span>
       </div>
@@ -347,6 +347,13 @@
       return `${partes[2]}-${partes[1]}-${partes[0]}`;
     }
     return val;
+  }
+
+  function formatearFechaISO(d) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   function selectService(element, id) {
@@ -583,7 +590,7 @@
     iCalLink.setAttribute('download', `cita-maria-duran-${fecha}.ics`);
   }
 
-  // BUSCAR LAS PRÓXIMAS 3 CITAS DISPONIBLES EN TIEMPO REAL
+  // BUSCAR LAS PRÓXIMAS 3 CITAS DISPONIBLES EN TIEMPO REAL (CON CAMPANA 🔔)
   async function cargarProximosHuecosLibres() {
     const container = document.getElementById('quick-slots-buttons');
     if (!container) return;
@@ -596,7 +603,7 @@
       for (let i = 0; i < 14 && huecosEncontrados.length < 3; i++) {
         const diaSemana = d.getDay();
         if (diaSemana !== 0 && diaSemana !== 6) {
-          const fechaStr = formatDate(d);
+          const fechaStr = formatearFechaISO(d);
           const esHoy = (i === 0);
           
           const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaStr);
@@ -644,7 +651,7 @@
       
       let html = '';
       huecosEncontrados.forEach(h => {
-        html += `<button type="button" class="btn" style="background:#FFFDF9; border:1px solid #B89047; color:#0B1E36; padding:6px 10px; font-size:11px; font-weight:bold; border-radius:6px; cursor:pointer;" onclick="seleccionarHuecoRapido('${h.fecha}', '${h.hora}')">⚡ ${h.texto}</button>`;
+        html += `<button type="button" class="btn" style="background:#FFFDF9; border:1px solid #B89047; color:#0B1E36; padding:6px 10px; font-size:11px; font-weight:bold; border-radius:6px; cursor:pointer;" onclick="seleccionarHuecoRapido('${h.fecha}', '${h.hora}')">🔔 ${h.texto}</button>`;
       });
       container.innerHTML = html;
       
