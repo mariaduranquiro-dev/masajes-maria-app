@@ -1059,7 +1059,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (AJUSTE FINO DE SUBIDA DE PÍXELES)
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (AJUSTE FINO DE 5 PÍXELES HACIA ARRIBA)
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1126,11 +1126,11 @@
           ctx.fillStyle = '#0B1E36';
           ctx.font = 'bold 30px Georgia, serif';
           ctx.textAlign = 'center';
-          ctx.fillText('No hay huecos libres esta semana.', 540, 930);
+          ctx.fillText('No hay huecos libres esta semana.', 540, 955);
         } else {
           keys.forEach((dia, index) => {
-            // Subimos ambos 15 píxeles exactos (pasando de 935 a 920 y de 1070 a 1055)
-            let currentY = (index === 0) ? 920 : 1055;
+            // Subimos ambos 5 píxeles exactos (de 920 a 915 y de 1055 a 1050)
+            let currentY = (index === 0) ? 915 : 1050;
 
             // Icono de calendario 🗓️ + Día (Izquierda)
             ctx.fillStyle = '#0B1E36';
