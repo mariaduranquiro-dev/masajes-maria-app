@@ -256,7 +256,7 @@
         <span>📊 Resumen Económico</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
-      <div class="quick-action-item" onclick="generarYDescargarHistoriaInstagramTemplate()">
+      <div class="quick-action-item" onclick="generarYDescargarHistoriaInstagram()">
         <span>📸 Descargar Historia Instagram</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
@@ -1035,7 +1035,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1089,7 +1089,6 @@
       let d = new Date(lunes);
       for (let i = 0; i < 6; i++) {
         const fechaStr = formatDate(d);
-        // Formato exacto requerido: "Lunes, 3 ago"
         let opcionesFecha = { weekday: 'long', day: 'numeric', month: 'short' };
         let nombreDiaFormateado = d.toLocaleDateString('es-ES', opcionesFecha);
         nombreDiaFormateado = nombreDiaFormateado.charAt(0).toUpperCase() + nombreDiaFormateado.slice(1);
@@ -1109,22 +1108,18 @@
         d.setDate(d.getDate() + 1);
       }
 
-      // Crear Canvas vertical de Instagram Story (1080 x 1920)
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
 
-      // 1. Cargar la imagen de plantilla exacta que ha subido María con el nombre story-template.png
       const imgTemplate = new Image();
       imgTemplate.crossOrigin = "anonymous";
       imgTemplate.src = 'story-template.png';
 
       imgTemplate.onload = function() {
-        // Dibujar la plantilla base exacta
         ctx.drawImage(imgTemplate, 0, 0, canvas.width, canvas.height);
 
-        // 2. Renderizar los huecos libres dinámicos exactamente dentro de la zona central
         let startY = 780;
         const keys = Object.keys(huecosPorDia);
 
@@ -1135,7 +1130,6 @@
           ctx.fillText('Agenda completa esta semana.', 540, 880);
         } else {
           keys.forEach((dia) => {
-            // Tarjeta blanca semitransparente con borde fino idéntica a la plantilla
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
             ctx.strokeStyle = '#E2DBCF';
             ctx.lineWidth = 2;
@@ -1144,13 +1138,11 @@
             ctx.fill();
             ctx.stroke();
 
-            // Icono de calendario 🗓️ + Día (Izquierda)
             ctx.fillStyle = '#0B1E36';
             ctx.font = 'bold 28px Georgia, serif';
             ctx.textAlign = 'left';
             ctx.fillText('🗓️  ' + dia, 180, startY + 68);
 
-            // Horas disponibles con separación de puntos dorados (Derecha)
             ctx.fillStyle = '#B89047';
             ctx.font = 'bold 28px Arial, sans-serif';
             ctx.textAlign = 'right';
@@ -1160,7 +1152,6 @@
           });
         }
 
-        // Descargar la imagen final combinada
         const link = document.createElement('a');
         link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
         link.href = canvas.toDataURL('image/png');
