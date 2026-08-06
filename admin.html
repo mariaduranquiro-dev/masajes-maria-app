@@ -256,7 +256,7 @@
         <span>📊 Resumen Económico</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
-      <div class="quick-action-item" onclick="generarYDescargarHistoriaInstagram()">
+      <div class="quick-action-item" onclick="generarYDescargarHistoriaInstagramTemplate()">
         <span>📸 Descargar Historia Instagram</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
@@ -1059,7 +1059,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (ESTÉTICA IDÉNTICA A TARJETA MÁRMOL / ACUARELA)
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (CLON EXACTO DE LA PLANTILLA OFICIAL DE MARÍA)
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1089,7 +1089,7 @@
       let d = new Date(lunes);
       for (let i = 0; i < 6; i++) {
         const fechaStr = formatDate(d);
-        // Formato exacto a la tarjeta: "Lunes, 3 ago"
+        // Formato exacto requerido: "Lunes, 3 ago"
         let opcionesFecha = { weekday: 'long', day: 'numeric', month: 'short' };
         let nombreDiaFormateado = d.toLocaleDateString('es-ES', opcionesFecha);
         nombreDiaFormateado = nombreDiaFormateado.charAt(0).toUpperCase() + nombreDiaFormateado.slice(1);
@@ -1115,130 +1115,61 @@
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
 
-      // 1. Fondo de textura marfil / pergamino (#F6F3ED)
-      ctx.fillStyle = '#F6F3ED';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 1. Cargar la imagen de plantilla exacta que ha subido María
+      const imgTemplate = new Image();
+      imgTemplate.crossOrigin = "anonymous";
+      imgTemplate.src = 'TARJETA MARMOL.png'; // Debe tener la imagen en su repo
 
-      // 2. Acuarela Azul Marino y vetas doradas en la esquina Superior
-      ctx.fillStyle = '#0B1E36';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(1080, 0);
-      ctx.lineTo(1080, 180);
-      ctx.quadraticCurveTo(540, 280, 0, 160);
-      ctx.fill();
+      imgTemplate.onload = function() {
+        // Dibujar la plantilla base exacta
+        ctx.drawImage(imgTemplate, 0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = '#B89047';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 168);
-      ctx.quadraticCurveTo(540, 288, 1080, 168);
-      ctx.stroke();
+        // 2. Renderizar los huecos libres dinámicos exactamente dentro de la zona central
+        let startY = 780;
+        const keys = Object.keys(huecosPorDia);
 
-      // Mancha superior derecha
-      ctx.fillStyle = 'rgba(11, 30, 54, 0.85)';
-      ctx.beginPath();
-      ctx.moveTo(750, 0);
-      ctx.lineTo(1080, 0);
-      ctx.lineTo(1080, 320);
-      ctx.quadraticCurveTo(900, 180, 750, 0);
-      ctx.fill();
-
-      // 3. Acuarela Azul Marino y vetas doradas en la esquina Inferior
-      ctx.fillStyle = '#0B1E36';
-      ctx.beginPath();
-      ctx.moveTo(0, 1920);
-      ctx.lineTo(1080, 1920);
-      ctx.lineTo(1080, 1780);
-      ctx.quadraticCurveTo(540, 1660, 0, 1780);
-      ctx.fill();
-
-      ctx.strokeStyle = '#B89047';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 1774);
-      ctx.quadraticCurveTo(540, 1654, 1080, 1774);
-      ctx.stroke();
-
-      // 4. Logotipo exacto "MD" con columna vertebral
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 150px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('M     D', 540, 410);
-
-      for (let y = 320; y < 405; y += 10) {
-        ctx.fillRect(524, y, 32, 7);
-      }
-
-      // Nombre corporativo
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 44px Georgia, serif';
-      ctx.fillText('MARÍA DURÁN', 540, 500);
-
-      // Subtítulo quiromasajista
-      ctx.fillStyle = '#B89047';
-      ctx.font = 'bold 22px Arial, sans-serif';
-      ctx.fillText('— QUIROMASAJISTA —', 540, 545);
-
-      // Título de la sección
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 34px Georgia, serif';
-      ctx.fillText('✨ HUECOS LIBRES ESTA SEMANA ✨', 540, 680);
-
-      // 5. Renderizar tarjetas de días (estilo idéntico a la plantilla de referencia)
-      let startY = 780;
-      const keys = Object.keys(huecosPorDia);
-
-      if (keys.length === 0) {
-        ctx.fillStyle = '#555555';
-        ctx.font = '30px Georgia, serif';
-        ctx.fillText('No hay huecos libres esta semana.', 540, 900);
-      } else {
-        keys.forEach((dia) => {
-          // Tarjeta blanca con borde fino
-          ctx.fillStyle = '#FFFFFF';
-          ctx.strokeStyle = '#E2DBCF';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.roundRect(110, startY, 860, 110, 16);
-          ctx.fill();
-          ctx.stroke();
-
-          // Icono de calendario 🗓️ + Día (Izquierda)
+        if (keys.length === 0) {
           ctx.fillStyle = '#0B1E36';
-          ctx.font = 'bold 28px Georgia, serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('🗓️  ' + dia, 160, startY + 68);
+          ctx.font = 'bold 32px Georgia, serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Agenda completa esta semana.', 540, 880);
+        } else {
+          keys.forEach((dia) => {
+            // Tarjeta blanca semitransparente con borde fino idéntica a la plantilla
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.strokeStyle = '#E2DBCF';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(130, startY, 820, 110, 16);
+            ctx.fill();
+            ctx.stroke();
 
-          // Horas disponibles (Derecha)
-          ctx.fillStyle = '#B89047';
-          ctx.font = 'bold 28px Arial, sans-serif';
-          ctx.textAlign = 'right';
-          ctx.fillText(huecosPorDia[dia].join('   •   '), 920, startY + 68);
+            // Icono de calendario 🗓️ + Día (Izquierda)
+            ctx.fillStyle = '#0B1E36';
+            ctx.font = 'bold 28px Georgia, serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('🗓️  ' + dia, 180, startY + 68);
 
-          startY += 140;
-        });
-      }
+            // Horas disponibles con separación de puntos dorados (Derecha)
+            ctx.fillStyle = '#B89047';
+            ctx.font = 'bold 28px Arial, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(huecosPorDia[dia].join('   •   '), 900, startY + 68);
 
-      // 6. Botón inferior de llamada a la acción
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = '#B89047';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.roundRect(150, 1550, 780, 90, 45);
-      ctx.fill();
-      ctx.stroke();
+            startY += 140;
+          });
+        }
 
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('📱 ¡RESERVA YA DESDE EL ENLACE DE LA BIO!', 540, 1608);
+        // Descargar la imagen final combinada
+        const link = document.createElement('a');
+        link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
 
-      // Descargar archivo PNG
-      const link = document.createElement('a');
-      link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      imgTemplate.onerror = function() {
+        alert("⚠️ No se ha encontrado el archivo 'TARJETA MARMOL.png' en el repositorio de GitHub. Sube la imagen de la plantilla con ese nombre exacto para poder estampar los huecos.");
+      };
 
     } catch (err) {
       alert("Error al generar la imagen para Instagram: " + err.message);
