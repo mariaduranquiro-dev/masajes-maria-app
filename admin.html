@@ -256,6 +256,10 @@
         <span>📊 Resumen Económico</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
+      <div class="quick-action-item" onclick="abrirModalPlantillaInstagram()">
+        <span>📸 Plantilla Instagram (Huecos)</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
+      </div>
     </div>
   </div>
 
@@ -295,6 +299,22 @@
         <div id="login-error" style="color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 10px; display: none;">PIN incorrecto. Inténtalo de nuevo.</div>
         <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;">Desbloquear Panel</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PLANTILLA INSTAGRAM -->
+  <div class="modal" id="modal-instagram-template">
+    <div class="modal-content" style="max-width: 440px; text-align: center;">
+      <div class="modal-header">
+        <span>📸 Plantilla para Instagram Stories</span>
+        <button class="btn" onclick="cerrarModalInstagramTemplate()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <div style="font-size: 12px; color: #666; font-family: sans-serif; margin-bottom: 10px; text-align: left;">
+        Copia este texto generado con los huecos libres de la semana actual y pégalo en tu historia de Instagram:
+      </div>
+      <textarea id="texto-instagram-generado" rows="9" readonly style="font-family: sans-serif; font-size: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; padding: 10px; border-radius: 8px; resize: none; color: #0B1E36;"></textarea>
+      <button class="btn btn-gold" style="width: 100%; padding: 12px; margin-top: 5px; font-size: 13px;" onclick="copiarTextoInstagram()">📋 Copiar Texto para Instagram</button>
+      <button class="btn" style="width: 100%; padding: 8px; margin-top: 6px; background: #ECE7DF; color: #333;" onclick="cerrarModalInstagramTemplate()">Cerrar</button>
     </div>
   </div>
 
@@ -523,7 +543,7 @@
       <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;" id="c-mensaje-anulacion"></p>
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Borrar Cita</button>
-        <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color: #333;" onclick="cerrarModalConfirmarAnulacion()">Cancelar</button>
+        <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color:#333;" onclick="cerrarModalConfirmarAnulacion()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -1055,6 +1075,91 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
+  // PLANTILLA INSTAGRAM STORIES
+  async function abrirModalPlantillaInstagram() {
+    const textarea = document.getElementById('texto-instagram-generado');
+    textarea.value = "Generando huecos de la semana...";
+    document.getElementById('modal-instagram-template').style.display = 'flex';
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const lunes = getMonday(fechaReferencia);
+      const domingo = new Date(lunes);
+      domingo.setDate(lunes.getDate() + 5); // Lunes a Sábado
+
+      const fecInicio = formatDate(lunes);
+      const fecFin = formatDate(domingo);
+
+      const { data: citas } = await supabase.from('citas').select('fecha, hora').gte('fecha', fecInicio).lte('fecha', fecFin);
+      const { data: bloqueos } = await supabase.from('bloqueos').select('fecha, hora').gte('fecha', fecInicio).lte('fecha', fecFin);
+
+      const citasMap = {};
+      if (citas) citas.forEach(c => citasMap[`${c.fecha}_${c.hora.substring(0,5)}`] = true);
+
+      const diasBloqueadosCompletos = {};
+      const horasBloqueadasMap = {};
+      if (bloqueos) {
+        bloqueos.forEach(b => {
+          if (!b.hora || b.hora === 'ALL') diasBloqueadosCompletos[b.fecha] = true;
+          else horasBloqueadasMap[`${b.fecha}_${b.hora.substring(0,5)}`] = true;
+        });
+      }
+
+      let huecosPorDia = {};
+      let d = new Date(lunes);
+      for (let i = 0; i < 6; i++) {
+        const fechaStr = formatDate(d);
+        const nombreDia = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
+        
+        if (!diasBloqueadosCompletos[fechaStr]) {
+          let libres = [];
+          for (const hStr of HORARIOS_SLOTS) {
+            const slotKey = `${fechaStr}_${hStr}`;
+            if (!citasMap[slotKey] && !horasBloqueadasMap[slotKey]) {
+              libres.push(hStr + 'h');
+            }
+          }
+          if (libres.length > 0) {
+            huecosPorDia[nombreDia] = libres;
+          }
+        }
+        d.setDate(d.getDate() + 1);
+      }
+
+      let textoFinal = "✨ ¡HUECOS LIBRES ESTA SEMANA! ✨\n\nSi necesitas un masaje descontracturante, reserva tu cita en los siguientes horarios:\n\n";
+      
+      const diasKeys = Object.keys(huecosPorDia);
+      if (diasKeys.length === 0) {
+        textoFinal = "¡Hola! La agenda para esta semana está completa. ¡Gracias por vuestra confianza! 💫\nPuedes consultar huecos para la próxima semana.";
+      } else {
+        diasKeys.forEach(dia => {
+          textoFinal += `📅 ${dia.charAt(0).toUpperCase() + dia.slice(1)}:\n   ${huecosPorDia[dia].join(', ')}\n\n`;
+        });
+        textoFinal += "📲 ¡Reserva ya con 1 clic desde el enlace de nuestra bio!";
+      }
+
+      textarea.value = textoFinal;
+    } catch (err) {
+      textarea.value = "Error al generar los huecos. Inténtalo de nuevo.";
+      console.error(err);
+    }
+  }
+
+  function cerrarModalInstagramTemplate() {
+    document.getElementById('modal-instagram-template').style.display = 'none';
+  }
+
+  function copiarTextoInstagram() {
+    const textarea = document.getElementById('texto-instagram-generado');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(textarea.value).then(() => {
+      alert("¡Texto copiado al portapapeles! Ya puedes pegarlo en tu historia de Instagram.");
+    }).catch(err => {
+      alert("No se pudo copiar automáticamente. Selecciónalo y cópialo manualmente.");
+    });
+  }
+
   // GESTOR DE BONOS (CON BUSCADOR LUPA)
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
@@ -1187,7 +1292,7 @@
     }
   }
 
-  // RECORDATORIOS 48H CON SINCRONIZACIÓN EN SUPABASE PARA MULTIDISPOSITIVO
+  // RECORDATORIOS 48H CON SINCRONIZACIÓN EN SUPABASE
   async function abrirModalRecordatorios48h() {
     const container = document.getElementById('lista-recordatorios-48h');
     container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
