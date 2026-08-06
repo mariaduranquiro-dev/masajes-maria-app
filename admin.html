@@ -1035,7 +1035,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1059,7 +1059,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (CLON EXACTO DE LA PLANTILLA OFICIAL DE MARÍA)
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM USANDO LA PLANTILLA EXACTA "story-template.png"
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1115,10 +1115,10 @@
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
 
-      // 1. Cargar la imagen de plantilla exacta que ha subido María
+      // 1. Cargar la imagen de plantilla exacta que ha subido María con el nombre story-template.png
       const imgTemplate = new Image();
       imgTemplate.crossOrigin = "anonymous";
-      imgTemplate.src = 'TARJETA MARMOL.png'; // Debe tener la imagen en su repo
+      imgTemplate.src = 'story-template.png';
 
       imgTemplate.onload = function() {
         // Dibujar la plantilla base exacta
@@ -1168,7 +1168,7 @@
       };
 
       imgTemplate.onerror = function() {
-        alert("⚠️ No se ha encontrado el archivo 'TARJETA MARMOL.png' en el repositorio de GitHub. Sube la imagen de la plantilla con ese nombre exacto para poder estampar los huecos.");
+        alert("⚠️ No se ha encontrado el archivo 'story-template.png' en tu repositorio de GitHub. Asegúrate de haber subido la imagen con ese nombre exacto.");
       };
 
     } catch (err) {
