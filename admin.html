@@ -256,8 +256,8 @@
         <span>📊 Resumen Económico</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
-      <div class="quick-action-item" onclick="abrirModalPlantillaInstagram()">
-        <span>📸 Plantilla Instagram (Huecos)</span>
+      <div class="quick-action-item" onclick="generarYDescargarHistoriaInstagram()">
+        <span>📸 Descargar Historia Instagram</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
     </div>
@@ -299,22 +299,6 @@
         <div id="login-error" style="color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 10px; display: none;">PIN incorrecto. Inténtalo de nuevo.</div>
         <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;">Desbloquear Panel</button>
       </form>
-    </div>
-  </div>
-
-  <!-- MODAL: PLANTILLA INSTAGRAM -->
-  <div class="modal" id="modal-instagram-template">
-    <div class="modal-content" style="max-width: 440px; text-align: center;">
-      <div class="modal-header">
-        <span>📸 Plantilla para Instagram Stories</span>
-        <button class="btn" onclick="cerrarModalInstagramTemplate()" style="background:#ECE7DF;">✕</button>
-      </div>
-      <div style="font-size: 12px; color: #666; font-family: sans-serif; margin-bottom: 10px; text-align: left;">
-        Copia este texto generado con los huecos libres de la semana actual y pégalo en tu historia de Instagram:
-      </div>
-      <textarea id="texto-instagram-generado" rows="9" readonly style="font-family: sans-serif; font-size: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; padding: 10px; border-radius: 8px; resize: none; color: #0B1E36;"></textarea>
-      <button class="btn btn-gold" style="width: 100%; padding: 12px; margin-top: 5px; font-size: 13px;" onclick="copiarTextoInstagram()">📋 Copiar Texto para Instagram</button>
-      <button class="btn" style="width: 100%; padding: 8px; margin-top: 6px; background: #ECE7DF; color: #333;" onclick="cerrarModalInstagramTemplate()">Cerrar</button>
     </div>
   </div>
 
@@ -1051,7 +1035,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1075,12 +1059,8 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // PLANTILLA INSTAGRAM STORIES
-  async function abrirModalPlantillaInstagram() {
-    const textarea = document.getElementById('texto-instagram-generado');
-    textarea.value = "Generando huecos de la semana...";
-    document.getElementById('modal-instagram-template').style.display = 'flex';
-
+  // GENERADOR AUTOMÁTICO DE IMAGEN PARA HISTORIA DE INSTAGRAM (HTML5 CANVAS)
+  async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const lunes = getMonday(fechaReferencia);
@@ -1126,38 +1106,137 @@
         d.setDate(d.getDate() + 1);
       }
 
-      let textoFinal = "✨ ¡HUECOS LIBRES ESTA SEMANA! ✨\n\nSi necesitas un masaje descontracturante, reserva tu cita en los siguientes horarios:\n\n";
-      
-      const diasKeys = Object.keys(huecosPorDia);
-      if (diasKeys.length === 0) {
-        textoFinal = "¡Hola! La agenda para esta semana está completa. ¡Gracias por vuestra confianza! 💫\nPuedes consultar huecos para la próxima semana.";
-      } else {
-        diasKeys.forEach(dia => {
-          textoFinal += `📅 ${dia.charAt(0).toUpperCase() + dia.slice(1)}:\n   ${huecosPorDia[dia].join(', ')}\n\n`;
-        });
-        textoFinal += "📲 ¡Reserva ya con 1 clic desde el enlace de nuestra bio!";
+      // Crear Canvas vertical de Instagram Story (1080 x 1920)
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Fondo elegante color marfil / pergamino (#F6F3ED)
+      ctx.fillStyle = '#F6F3ED';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Decoración superior e inferior estilo mármol / acuarela con tonos azul marino (#0B1E36) y oro (#B89047)
+      ctx.fillStyle = '#0B1E36';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(1080, 0);
+      ctx.lineTo(1080, 260);
+      ctx.quadraticCurveTo(540, 360, 0, 240);
+      ctx.fill();
+
+      // Franja dorada decorativa
+      ctx.strokeStyle = '#B89047';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 266);
+      ctx.quadraticCurveTo(540, 366, 1080, 246);
+      ctx.stroke();
+
+      // Decoración inferior
+      ctx.fillStyle = '#0B1E36';
+      ctx.beginPath();
+      ctx.moveTo(0, 1920);
+      ctx.lineTo(1080, 1920);
+      ctx.lineTo(1080, 1680);
+      ctx.quadraticCurveTo(540, 1580, 0, 1700);
+      ctx.fill();
+
+      ctx.strokeStyle = '#B89047;';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 1674);
+      ctx.quadraticCurveTo(540, 1574, 1080, 1694);
+      ctx.stroke();
+
+      // 3. Logotipo central "MD" con columna vertebral
+      ctx.fillStyle = '#0B1E36';
+      ctx.font = 'bold 120px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('M     D', 540, 520);
+
+      // Columna vertebral esquemática en el espacio entre M y D
+      ctx.fillStyle = '#0B1E36';
+      for (let y = 430; y < 515; y += 14) {
+        ctx.fillRect(525, y, 30, 8);
       }
 
-      textarea.value = textoFinal;
+      // Nombre y subtítulo
+      ctx.fillStyle = '#0B1E36';
+      ctx.font = 'bold 44px Georgia, serif';
+      ctx.fillText('MARÍA DURÁN', 540, 610);
+
+      ctx.fillStyle = '#B89047';
+      ctx.font = 'bold 24px Arial, sans-serif';
+      ctx.letterSpacing = '8px';
+      ctx.fillText('— QUIROMASAJISTA —', 540, 660);
+
+      // Título de la sección de huecos
+      ctx.fillStyle = '#0B1E36';
+      ctx.font = 'bold 36px Georgia, serif';
+      ctx.fillText('✨ HUECOS LIBRES ESTA SEMANA ✨', 540, 780);
+
+      // 4. Dibujar los huecos libres disponibles
+      let startY = 880;
+      const keys = Object.keys(huecosPorDia);
+
+      if (keys.length === 0) {
+        ctx.fillStyle = '#555555';
+        ctx.font = '32px Georgia, serif';
+        ctx.fillText('Agenda completa esta semana.', 540, 960);
+        ctx.font = '26px Georgia, serif';
+        ctx.fillText('¡Gracias por vuestra confianza!', 540, 1020);
+      } else {
+        keys.forEach((dia) => {
+          // Tarjeta de fondo para cada día
+          ctx.fillStyle = '#FFFFFF';
+          ctx.strokeStyle = '#E2DBCF';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(140, startY - 40, 800, 110, 16);
+          ctx.fill();
+          ctx.stroke();
+
+          // Día de la semana
+          ctx.fillStyle = '#0B1E36';
+          ctx.font = 'bold 28px Georgia, serif';
+          ctx.textAlign = 'left';
+          ctx.fillText('📅 ' + (dia.charAt(0).toUpperCase() + dia.slice(1)), 180, startY + 25);
+
+          // Horas disponibles
+          ctx.fillStyle = '#B89047';
+          ctx.font = 'bold 28px Arial, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(huecosPorDia[dia].join('  •  '), 900, startY + 25);
+
+          startY += 140;
+        });
+      }
+
+      // Llamada a la acción inferior
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = '#B89047';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(190, 1480, 700, 90, 45);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#0B1E36';
+      ctx.font = 'bold 26px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📲 ¡RESERVA YA DESDE EL ENLACE DE LA BIO!', 540, 1538);
+
+      // 5. Descargar automáticamente la imagen generada
+      const link = document.createElement('a');
+      link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
     } catch (err) {
-      textarea.value = "Error al generar los huecos. Inténtalo de nuevo.";
+      alert("Error al generar la imagen para Instagram: " + err.message);
       console.error(err);
     }
-  }
-
-  function cerrarModalInstagramTemplate() {
-    document.getElementById('modal-instagram-template').style.display = 'none';
-  }
-
-  function copiarTextoInstagram() {
-    const textarea = document.getElementById('texto-instagram-generado');
-    textarea.select();
-    textarea.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(textarea.value).then(() => {
-      alert("¡Texto copiado al portapapeles! Ya puedes pegarlo en tu historia de Instagram.");
-    }).catch(err => {
-      alert("No se pudo copiar automáticamente. Selecciónalo y cópialo manualmente.");
-    });
   }
 
   // GESTOR DE BONOS (CON BUSCADOR LUPA)
@@ -1292,7 +1371,7 @@
     }
   }
 
-  // RECORDATORIOS 48H CON SINCRONIZACIÓN EN SUPABASE
+  // RECORDATORIOS 48H
   async function abrirModalRecordatorios48h() {
     const container = document.getElementById('lista-recordatorios-48h');
     container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
