@@ -423,7 +423,7 @@
     </div>
   </div>
 
-  <!-- GESTOR DE BONOS (CON BUSCADOR LUPA) -->
+  <!-- GESTOR DE BONOS -->
   <div class="modal" id="modal-gestor-bonos">
     <div class="modal-content">
       <div class="modal-header">
@@ -1055,7 +1055,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTOR DE BONOS CON BUSCADOR LUPA
+  // GESTOR DE BONOS (CON BUSCADOR LUPA)
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     document.getElementById('input-busqueda-bonos').value = '';
@@ -1187,6 +1187,7 @@
     }
   }
 
+  // RECORDATORIOS 48H CON SINCRONIZACIÓN EN SUPABASE PARA MULTIDISPOSITIVO
   async function abrirModalRecordatorios48h() {
     const container = document.getElementById('lista-recordatorios-48h');
     container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
@@ -1203,13 +1204,15 @@
         const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
         const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
 
+        const yaEnviado = cita.recordatorio_enviado === true;
+
         html += `
           <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
             <div>
               <strong style="font-size:13px; color:#0B1E36;">${cita.cliente_nombre}</strong><br>
               <span style="font-size:11px; color:#555;">📅 ${fechaEsp} • ⏰ ${cita.hora.substring(0,5)} h</span>
             </div>
-            <button class="btn" style="background:#25D366; color:#FFF; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;" onclick="enviarRecordatorio(this, '${linkWs}')">💬 Enviar</button>
+            <button class="btn" style="background:${yaEnviado ? '#6B7280' : '#25D366'}; color:#FFF; border:none; padding:6px 12px; border-radius:6px; cursor:${yaEnviado ? 'default' : 'pointer'}; font-weight:bold; pointer-events:${yaEnviado ? 'none' : 'auto'};" onclick="enviarRecordatorio(this, '${linkWs}', ${cita.id})">${yaEnviado ? '✓ Enviado' : '💬 Enviar'}</button>
           </div>
         `;
       });
@@ -1217,11 +1220,18 @@
     } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
   }
 
-  function enviarRecordatorio(btnEl, url) {
+  async function enviarRecordatorio(btnEl, url, citaId) {
     window.open(url, '_blank');
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('citas').update({ recordatorio_enviado: true }).eq('id', citaId);
+    } catch (e) {
+      console.error(e);
+    }
     btnEl.style.backgroundColor = '#6B7280';
     btnEl.style.borderColor = '#6B7280';
     btnEl.style.pointerEvents = 'none';
+    btnEl.style.cursor = 'default';
     btnEl.innerText = '✓ Enviado';
   }
 
