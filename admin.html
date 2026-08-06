@@ -1059,7 +1059,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM USANDO LA PLANTILLA EXACTA "story-template.png"
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (POSICIÓN BAJADA EXACTA PARA LOS HUECOS)
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1098,7 +1098,7 @@
           for (const hStr of HORARIOS_SLOTS) {
             const slotKey = `${fechaStr}_${hStr}`;
             if (!citasMap[slotKey] && !horasBloqueadasMap[slotKey]) {
-              libres.push(hStr + 'h');
+              libres.push(hStr);
             }
           }
           if (libres.length > 0) {
@@ -1120,35 +1120,30 @@
       imgTemplate.onload = function() {
         ctx.drawImage(imgTemplate, 0, 0, canvas.width, canvas.height);
 
-        let startY = 780;
+        // POSICIÓN BAJADA EXACTA PARA ENCAJAR EN LOS HUECOS BLANCOS DE LA PLANTILLA
+        let startY = 830; 
         const keys = Object.keys(huecosPorDia);
 
         if (keys.length === 0) {
           ctx.fillStyle = '#0B1E36';
-          ctx.font = 'bold 32px Georgia, serif';
+          ctx.font = 'bold 30px Georgia, serif';
           ctx.textAlign = 'center';
-          ctx.fillText('Agenda completa esta semana.', 540, 880);
+          ctx.fillText('No hay huecos libres esta semana.', 540, 895);
         } else {
           keys.forEach((dia) => {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.strokeStyle = '#E2DBCF';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(130, startY, 820, 110, 16);
-            ctx.fill();
-            ctx.stroke();
-
+            // Icono de calendario 🗓️ + Día (Izquierda)
             ctx.fillStyle = '#0B1E36';
             ctx.font = 'bold 28px Georgia, serif';
             ctx.textAlign = 'left';
-            ctx.fillText('🗓️  ' + dia, 180, startY + 68);
+            ctx.fillText('🗓️  ' + dia, 180, startY);
 
+            // Horas disponibles alineadas a la derecha con separación de puntos
             ctx.fillStyle = '#B89047';
             ctx.font = 'bold 28px Arial, sans-serif';
             ctx.textAlign = 'right';
-            ctx.fillText(huecosPorDia[dia].join('   •   '), 900, startY + 68);
+            ctx.fillText(huecosPorDia[dia].join('   •   '), 900, startY);
 
-            startY += 140;
+            startY += 125; // Distancia exacta entre las dos cajas blancas de la plantilla
           });
         }
 
