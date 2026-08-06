@@ -13,8 +13,9 @@
   <meta name="apple-mobile-web-app-title" content="María Durán">
   <link rel="apple-touch-icon" href="logo.jpg">
 
-  <!-- Supabase JS Client -->
+  <!-- Supabase JS Client & Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; }
     body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; position: relative; min-height: 100vh; }
@@ -156,7 +157,7 @@
     }
 
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 440px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 480px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
     .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     
     .status-btn-group { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
@@ -379,7 +380,7 @@
 
   <!-- MODAL: RESUMEN ECONÓMICO -->
   <div class="modal" id="modal-resumen-economico">
-    <div class="modal-content" style="max-width: 440px;">
+    <div class="modal-content" style="max-width: 460px;">
       <div class="modal-header">
         <span>📊 Resumen Económico</span>
         <button class="btn" onclick="cerrarModalResumenEconomico()" style="background:#ECE7DF;">✕</button>
@@ -421,6 +422,11 @@
             <span style="font-size: 11px; color: #666; display:block;">Pendiente Bonos</span>
             <strong id="stat-pendiente-bonos" style="font-size: 14px; color: #DC2626;">0 €</strong>
           </div>
+        </div>
+
+        <!-- GRÁFICA ELEGANTE DE RESUMEN ECONÓMICO -->
+        <div style="margin-top: 18px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
+          <canvas id="graficoEconomico" style="max-height: 180px; width: 100%;"></canvas>
         </div>
       </div>
       <button class="btn" style="width:100%; padding:10px; margin-top:15px; background:#ECE7DF; color:#333;" onclick="cerrarModalResumenEconomico()">Cerrar</button>
@@ -557,6 +563,7 @@
   let bonoPagoSeleccionado = null;
   let avisosGlobalCache = [];
   let slotSeleccionadoAdmin = null;
+  let chartInstanciaEconomica = null;
   
   let bonoIdActualCita = null;
   let bonoPrecioTotalActual = 0;
@@ -900,7 +907,7 @@
         col.innerHTML = colHtml;
       }
 
-      // CÁLCULO DE CONTABILIDAD
+      // CÁLCULO DE CONTABILIDAD Y GRÁFICA
       const periodoSelect = document.getElementById('filtro-periodo-contabilidad').value;
       let startDate, endDate;
       const refDate = new Date(lunes);
@@ -968,9 +975,58 @@
       document.getElementById('stat-sesiones-periodo').innerText = sesionesPeriodo;
       document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosTotal} €`;
 
+      // RENDERIZAR GRÁFICA ELEGANTE
+      actualizarGraficoEconomico(ingresosPeriodo, sesionesPeriodo, pendienteBonosTotal);
+
     } catch (e) { console.error(e); }
 
     verificarNotificacionesRecientes(false);
+  }
+
+  function actualizarGraficoEconomico(ingresos, sesiones, pendiente) {
+    const ctx = document.getElementById('graficoEconomico').getContext('2d');
+    if (chartInstanciaEconomica) {
+      chartInstanciaEconomica.destroy();
+    }
+    chartInstanciaEconomica = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Ingresos (€)', 'Sesiones', 'Bonos Pend. (€)'],
+        datasets: [{
+          label: 'Resumen Periodo',
+          data: [ingresos, sesiones, pendiente],
+          backgroundColor: [
+            'rgba(11, 30, 54, 0.85)',   // Azul Marino
+            'rgba(184, 144, 71, 0.85)', // Dorado
+            'rgba(220, 38, 38, 0.85)'   // Rojo Coral
+          ],
+          borderColor: [
+            '#0B1E36',
+            '#B89047',
+            '#DC2626'
+          ],
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: '#E2DBCF' },
+            ticks: { font: { family: 'Georgia', size: 11 }, color: '#0B1E36' }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { family: 'Georgia', size: 11 }, color: '#0B1E36' }
+          }
+        }
+      }
+    });
   }
 
   function abrirModalAccionSlot(fecha, hora) {
@@ -1059,7 +1115,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (AJUSTE FINO DE 5 PÍXELES ARRIBA)
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1129,16 +1185,13 @@
           ctx.fillText('No hay huecos libres esta semana.', 540, 950);
         } else {
           keys.forEach((dia, index) => {
-            // Subimos exactamente 5 píxeles (910 y 1045)
             let currentY = (index === 0) ? 910 : 1045;
 
-            // Icono de calendario 🗓️ + Día (Izquierda)
             ctx.fillStyle = '#0B1E36';
             ctx.font = 'bold 28px Georgia, serif';
             ctx.textAlign = 'left';
             ctx.fillText('🗓️  ' + dia, 180, currentY);
 
-            // Horas disponibles alineadas a la derecha con separación de puntos
             ctx.fillStyle = '#B89047';
             ctx.font = 'bold 28px Arial, sans-serif';
             ctx.textAlign = 'right';
