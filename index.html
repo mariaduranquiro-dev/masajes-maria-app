@@ -590,7 +590,7 @@
     iCalLink.setAttribute('download', `cita-maria-duran-${fecha}.ics`);
   }
 
-  // BUSCAR LAS PRÓXIMAS 3 CITAS DISPONIBLES EN TIEMPO REAL (CON CAMPANA 🔔)
+  // BUSCAR LAS PRÓXIMAS 3 CITAS DISPONIBLES AMPLIADO A 30 DÍAS
   async function cargarProximosHuecosLibres() {
     const container = document.getElementById('quick-slots-buttons');
     if (!container) return;
@@ -600,7 +600,7 @@
       let huecosEncontrados = [];
       let d = new Date();
       
-      for (let i = 0; i < 14 && huecosEncontrados.length < 3; i++) {
+      for (let i = 0; i < 30 && huecosEncontrados.length < 3; i++) {
         const diaSemana = d.getDay();
         if (diaSemana !== 0 && diaSemana !== 6) {
           const fechaStr = formatearFechaISO(d);
