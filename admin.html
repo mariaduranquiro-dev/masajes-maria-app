@@ -1059,7 +1059,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GENERADOR AUTOMÁTICO DE IMAGEN PARA HISTORIA DE INSTAGRAM (HTML5 CANVAS)
+  // GENERADOR AUTOMÁTICO DE HISTORIA INSTAGRAM (ESTÉTICA IDÉNTICA A TARJETA MÁRMOL/ACUARELA)
   async function generarYDescargarHistoriaInstagram() {
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1106,112 +1106,157 @@
         d.setDate(d.getDate() + 1);
       }
 
+      // Crear Canvas vertical de Instagram Story (1080 x 1920)
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
 
+      // 1. Fondo de textura marfil/pergamino (#F6F3ED)
       ctx.fillStyle = '#F6F3ED';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // 2. Acuarela Azul Marino y detalles dorados en esquina Superior Derecha
       ctx.fillStyle = '#0B1E36';
       ctx.beginPath();
-      ctx.moveTo(0, 0);
+      ctx.moveTo(700, 0);
       ctx.lineTo(1080, 0);
-      ctx.lineTo(1080, 260);
-      ctx.quadraticCurveTo(540, 360, 0, 240);
+      ctx.lineTo(1080, 500);
+      ctx.quadraticCurveTo(900, 250, 700, 0);
       ctx.fill();
 
-      ctx.strokeStyle = '#B89047';
-      ctx.lineWidth = 6;
+      // Formas orgánicas de acuarela superior derecha
       ctx.beginPath();
-      ctx.moveTo(0, 266);
-      ctx.quadraticCurveTo(540, 366, 1080, 246);
+      ctx.moveTo(500, 0);
+      ctx.lineTo(1080, 0);
+      ctx.lineTo(1080, 350);
+      ctx.quadraticCurveTo(750, 150, 500, 0);
+      ctx.fill();
+
+      // Veta fina dorada superior derecha
+      ctx.strokeStyle = '#B89047';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(550, 20);
+      ctx.bezierCurveTo(750, 120, 850, 200, 1080, 150);
       ctx.stroke();
 
+      // 3. Acuarela Azul Marino y vetas doradas en esquina Inferior Izquierda
       ctx.fillStyle = '#0B1E36';
       ctx.beginPath();
       ctx.moveTo(0, 1920);
-      ctx.lineTo(1080, 1920);
-      ctx.lineTo(1080, 1680);
-      ctx.quadraticCurveTo(540, 1580, 0, 1700);
+      ctx.lineTo(380, 1920);
+      ctx.lineTo(0, 1420);
       ctx.fill();
 
-      ctx.strokeStyle = '#B89047';
-      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(0, 1674);
-      ctx.quadraticCurveTo(540, 1574, 1080, 1694);
+      ctx.moveTo(0, 1920);
+      ctx.lineTo(580, 1920);
+      ctx.lineTo(0, 1570);
+      ctx.fill();
+
+      // Veta fina dorada inferior izquierda
+      ctx.strokeStyle = '#B89047';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 1750);
+      ctx.bezierCurveTo(200, 1700, 350, 1820, 500, 1920);
       ctx.stroke();
 
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 120px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('M     D', 540, 520);
+      // 4. Silueta / Graboclassico artístico lateral izquierdo (como la tarjeta)
+      ctx.fillStyle = 'rgba(11, 30, 54, 0.08)';
+      ctx.beginPath();
+      ctx.arc(150, 1100, 220, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(80, 1250, 140, 450);
 
+      // 5. Logotipo central exacto "MD" con columna vertebral
       ctx.fillStyle = '#0B1E36';
-      for (let y = 430; y < 515; y += 14) {
-        ctx.fillRect(525, y, 30, 8);
+      ctx.font = 'bold 160px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('M     D', 560, 520);
+
+      // Dibujar columna vertebral exacta entre la M y la D
+      ctx.fillStyle = '#0B1E36';
+      for (let y = 410; y < 510; y += 11) {
+        ctx.fillRect(535, y, 32, 7);
       }
 
+      // Nombre corporativo
       ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 44px Georgia, serif';
-      ctx.fillText('MARÍA DURÁN', 540, 610);
+      ctx.font = 'bold 50px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MARÍA DURÁN', 540, 630);
+
+      // Subtítulo con líneas doradas a los lados
+      ctx.strokeStyle = '#B89047';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(220, 695); ctx.lineTo(350, 695);
+      ctx.moveTo(730, 695); ctx.lineTo(860, 695);
+      ctx.stroke();
 
       ctx.fillStyle = '#B89047';
       ctx.font = 'bold 24px Arial, sans-serif';
-      ctx.fillText('— QUIROMASAJISTA —', 540, 660);
+      ctx.fillText('QUIROMASAJISTA', 540, 703);
 
+      // 6. Título de Huecos Disponibles
       ctx.fillStyle = '#0B1E36';
       ctx.font = 'bold 36px Georgia, serif';
-      ctx.fillText('✨ HUECOS LIBRES ESTA SEMANA ✨', 540, 780);
+      ctx.fillText('✨ HUECOS LIBRES ESTA SEMANA ✨', 540, 830);
 
-      let startY = 880;
+      // 7. Renderizar las tarjetas de cada día
+      let startY = 930;
       const keys = Object.keys(huecosPorDia);
 
       if (keys.length === 0) {
         ctx.fillStyle = '#555555';
         ctx.font = '32px Georgia, serif';
-        ctx.fillText('Agenda completa esta semana.', 540, 960);
+        ctx.fillText('Agenda completa esta semana.', 540, 1050);
         ctx.font = '26px Georgia, serif';
-        ctx.fillText('¡Gracias por vuestra confianza!', 540, 1020);
+        ctx.fillText('¡Gracias por vuestra confianza!', 540, 1110);
       } else {
         keys.forEach((dia) => {
+          // Tarjeta blanca con borde elegante
           ctx.fillStyle = '#FFFFFF';
           ctx.strokeStyle = '#E2DBCF';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.roundRect(140, startY - 40, 800, 110, 16);
+          ctx.roundRect(110, startY - 45, 860, 120, 16);
           ctx.fill();
           ctx.stroke();
 
+          // Día de la semana (Izquierda)
           ctx.fillStyle = '#0B1E36';
-          ctx.font = 'bold 28px Georgia, serif';
+          ctx.font = 'bold 30px Georgia, serif';
           ctx.textAlign = 'left';
-          ctx.fillText('📅 ' + (dia.charAt(0).toUpperCase() + dia.slice(1)), 180, startY + 25);
+          ctx.fillText('📅 ' + (dia.charAt(0).toUpperCase() + dia.slice(1)), 160, startY + 28);
 
+          // Horas disponibles (Derecha)
           ctx.fillStyle = '#B89047';
-          ctx.font = 'bold 28px Arial, sans-serif';
+          ctx.font = 'bold 30px Arial, sans-serif';
           ctx.textAlign = 'right';
-          ctx.fillText(huecosPorDia[dia].join('  •  '), 900, startY + 25);
+          ctx.fillText(huecosPorDia[dia].join('   •   '), 920, startY + 28);
 
-          startY += 140;
+          startY += 150;
         });
       }
 
-      ctx.fillStyle = '#FFFFFF';
+      // 8. Botón inferior de llamada a la acción
+      ctx.fillStyle = '#0B1E36';
       ctx.strokeStyle = '#B89047';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(190, 1480, 700, 90, 45);
+      ctx.roundRect(140, 1680, 800, 100, 50);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#0B1E36';
-      ctx.font = 'bold 26px Arial, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 28px Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('📲 ¡RESERVA YA DESDE EL ENLACE DE LA BIO!', 540, 1538);
+      ctx.fillText('📲 ¡RESERVA YA DESDE EL ENLACE DE LA BIO!', 540, 1743);
 
+      // Descargar archivo PNG
       const link = document.createElement('a');
       link.download = `historia-instagram-maria-duran-${fecInicio}.png`;
       link.href = canvas.toDataURL('image/png');
