@@ -474,6 +474,25 @@
     </div>
   </div>
 
+  <!-- MODAL: PRECIO PERSONALIZADO (CONOCIDOS) -->
+  <div class="modal" id="modal-precio-personalizado">
+    <div class="modal-content" style="max-width:380px;">
+      <div class="modal-header">
+        <span>🏷️ Precio Especial / Conocidos</span>
+        <button class="btn" onclick="cerrarModalPrecioPersonalizado()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;">
+        Introduce el importe personalizado para esta sesión (ej. 20€ o 0€):
+      </div>
+      <form onsubmit="guardarPrecioPersonalizado(event)">
+        <label style="font-size:11px; font-family:sans-serif; font-weight:bold; color:#0B1E36;">Importe (€):</label>
+        <input type="number" id="input-precio-especial" step="0.01" min="0" required placeholder="Ej. 20">
+        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar y Marcar Pagado</button>
+        <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalPrecioPersonalizado()">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL GESTION CITA -->
   <div class="modal" id="modal-gestionar-cita">
     <div class="modal-content">
@@ -483,7 +502,8 @@
       </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="g-detalles">Cargando detalles...</div>
       
-      <button class="btn" style="background:#B89047; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="registrarPagoDesdeGestionCita()">💳 Registrar Pago (Parcial o Total)</button>
+      <button class="btn" style="background:#B89047; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:8px; font-weight:bold; cursor:pointer;" onclick="registrarPagoDesdeGestionCita()">💳 Registrar Pago (Parcial o Total)</button>
+      <button class="btn" style="background:#0B1E36; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="abrirModalPrecioPersonalizado()">🏷️ Asignar Precio Especial / Conocidos</button>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
@@ -802,17 +822,6 @@
       const { data: bonos } = await supabase.from('bonos').select('*');
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
 
-      const bonosPagadosMap = {};
-      if (bonos) {
-        bonos.forEach(b => {
-          const precio = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
-          const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precio;
-          if (pagado >= precio) {
-            bonosPagadosMap[b.cliente_telefono] = true;
-          }
-        });
-      }
-
       for (let i = 0; i < 6; i++) {
         const fechaStr = fechasSemana[i];
         const isToday = formatDate(new Date()) === fechaStr;
@@ -869,18 +878,17 @@
           const citaEnSlot = citasSemana ? citasSemana.find(c => c.fecha === fechaStr && c.hora.substring(0,5) === slotHora) : null;
 
           if (citaEnSlot) {
-            const esBonoPagado100 = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5 || citaEnSlot.estado === 'bono') && bonosPagadosMap[citaEnSlot.cliente_telefono];
             let chipClass = 'chip-pendiente';
             let estadoEtiqueta = citaEnSlot.estado ? citaEnSlot.estado.toUpperCase() : 'PENDIENTE';
 
-            if (citaEnSlot.estado === 'pagado' || esBonoPagado100) {
+            if (citaEnSlot.estado === 'pagado') {
               chipClass = 'chip-pagado';
-              if (esBonoPagado100) estadoEtiqueta = 'BONO PAGADO';
-            } else if (citaEnSlot.estado === 'bono') {
+            } else if (citaEnSlot.estado === 'bono' || citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) {
               chipClass = 'chip-bono';
+              estadoEtiqueta = 'BONO';
             }
 
-            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : '35€';
+            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : (citaEnSlot.precio_personalizado !== null && citaEnSlot.precio_personalizado !== undefined ? `${citaEnSlot.precio_personalizado}€` : '35€');
             colHtml += `
               <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(citaEnSlot)})'>
                 <span class="chip-time">${citaEnSlot.hora.substring(0,5)}</span>
@@ -946,7 +954,11 @@
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
           if (c.estado === 'pagado') {
-            ingresosPeriodo += 35;
+            if (c.precio_personalizado !== null && c.precio_personalizado !== undefined) {
+              ingresosPeriodo += Number(c.precio_personalizado);
+            } else {
+              ingresosPeriodo += 35;
+            }
           }
         });
       }
@@ -971,7 +983,6 @@
       document.getElementById('stat-sesiones-periodo').innerText = sesionesPeriodo;
       document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosTotal} €`;
 
-      // RENDERIZAR GRÁFICA ELEGANTE
       actualizarGraficoEconomico(ingresosPeriodo, sesionesPeriodo, pendienteBonosTotal);
 
     } catch (e) { console.error(e); }
@@ -992,9 +1003,9 @@
           label: 'Resumen Periodo',
           data: [ingresos, sesiones, pendiente],
           backgroundColor: [
-            'rgba(11, 30, 54, 0.85)',   // Azul Marino
-            'rgba(184, 144, 71, 0.85)', // Dorado
-            'rgba(220, 38, 38, 0.85)'   // Rojo Coral
+            'rgba(11, 30, 54, 0.85)',
+            'rgba(184, 144, 71, 0.85)',
+            'rgba(220, 38, 38, 0.85)'
           ],
           borderColor: [
             '#0B1E36',
@@ -1110,6 +1121,34 @@
 
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
+
+  // GESTIÓN DE PRECIO PERSONALIZADO (CONOCIDOS)
+  function abrirModalPrecioPersonalizado() {
+    document.getElementById('input-precio-especial').value = '';
+    document.getElementById('modal-gestionar-cita').style.display = 'none';
+    document.getElementById('modal-precio-personalizado').style.display = 'flex';
+  }
+  function cerrarModalPrecioPersonalizado() {
+    document.getElementById('modal-precio-personalizado').style.display = 'none';
+    document.getElementById('modal-gestionar-cita').style.display = 'flex';
+  }
+
+  async function guardarPrecioPersonalizado(e) {
+    e.preventDefault();
+    if (!citaSeleccionada) return;
+    const precioVal = parseFloat(document.getElementById('input-precio-especial').value);
+    if (isNaN(precioVal) || precioVal < 0) return;
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('citas').update({ estado: 'pagado', precio_personalizado: precioVal }).eq('id', citaSeleccionada.id);
+      cerrarModalPrecioPersonalizado();
+      cerrarModalGestion();
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al guardar precio personalizado: " + err.message);
+    }
+  }
 
   // GESTOR DE BONOS
   async function abrirModalGestorBonos() { 
@@ -1392,40 +1431,13 @@
     if (!citaSeleccionada) return;
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-      const { data: bonosActivos } = await supabase
-        .from('bonos')
-        .select('*')
-        .eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim())
-        .gt('sesiones_restantes', 0)
-        .order('id', { ascending: true })
-        .limit(1);
-
-      if (!bonosActivos || bonosActivos.length === 0) {
-        const precioTotal = (numSesiones === 5) ? 140 : 90;
-        const restantesIniciales = numSesiones - 1;
-        await supabase.from('bonos').insert([{
-          cliente_nombre: citaSeleccionada.cliente_nombre,
-          cliente_telefono: citaSeleccionada.cliente_telefono,
-          sesiones_totales: numSesiones,
-          sesiones_restantes: restantesIniciales,
-          precio_total: precioTotal,
-          monto_pagado: 0
-        }]);
-      } else {
-        const bonoActual = bonosActivos[0];
-        if (bonoActual.sesiones_restantes > 0) {
-          await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes - 1 }).eq('id', bonoActual.id);
-        }
-      }
-
       const servicioIdNuevo = (numSesiones === 5) ? 5 : 2;
       await supabase.from('citas').update({ estado: 'bono', servicio_id: servicioIdNuevo }).eq('id', citaSeleccionada.id);
       
       cerrarModalGestion();
       cargarAgendaSemanal();
     } catch (err) {
-      alert("Error al convertir a bono: " + err.message);
+      alert("Error al marcar como bono: " + err.message);
     }
   }
 
@@ -1453,13 +1465,6 @@
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 5) {
-      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
-      if (bonos && bonos.length > 0) {
-        const b = bonos[0];
-        if (b.sesiones_restantes < b.sesiones_totales) await supabase.from('bonos').update({ sesiones_restantes: b.sesiones_restantes + 1 }).eq('id', b.id);
-      }
-    }
     await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
     document.getElementById('modal-confirmar-anulacion').style.display = 'none';
     citaSeleccionada = null;
