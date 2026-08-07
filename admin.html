@@ -474,20 +474,20 @@
     </div>
   </div>
 
-  <!-- MODAL: PRECIO PERSONALIZADO (CONOCIDOS) -->
+  <!-- MODAL: PRECIO ESPECIAL / CONOCIDOS -->
   <div class="modal" id="modal-precio-personalizado">
     <div class="modal-content" style="max-width:380px;">
       <div class="modal-header">
-        <span>🏷️ Precio Especial / Conocidos</span>
+        <span>🏷️ Asignar Precio</span>
         <button class="btn" onclick="cerrarModalPrecioPersonalizado()" style="background:#ECE7DF;">✕</button>
       </div>
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;">
-        Introduce el importe personalizado para esta sesión (ej. 20€ o 0€):
+        Introduce el importe para esta sesión (ej. 20€ o 0€):
       </div>
       <form onsubmit="guardarPrecioPersonalizado(event)">
         <label style="font-size:11px; font-family:sans-serif; font-weight:bold; color:#0B1E36;">Importe (€):</label>
         <input type="number" id="input-precio-especial" step="0.01" min="0" required placeholder="Ej. 20">
-        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar y Marcar Pagado</button>
+        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar</button>
         <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalPrecioPersonalizado()">Cancelar</button>
       </form>
     </div>
@@ -503,7 +503,7 @@
       <div style="font-size:12px; font-family:sans-serif; color:#555; margin-bottom:12px;" id="g-detalles">Cargando detalles...</div>
       
       <button class="btn" style="background:#B89047; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:8px; font-weight:bold; cursor:pointer;" onclick="registrarPagoDesdeGestionCita()">💳 Registrar Pago (Parcial o Total)</button>
-      <button class="btn" style="background:#0B1E36; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="abrirModalPrecioPersonalizado()">🏷️ Asignar Precio Especial / Conocidos</button>
+      <button class="btn" style="background:#0B1E36; color:#FFF; border:none; width:100%; padding:10px; margin-bottom:12px; font-weight:bold; cursor:pointer;" onclick="abrirModalPrecioPersonalizado()">🏷️ Asignar Precio</button>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
@@ -1122,7 +1122,7 @@
   function abrirModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'flex'; togglePeriodoPersonalizado(); cargarAgendaSemanal(); }
   function cerrarModalResumenEconomico() { document.getElementById('modal-resumen-economico').style.display = 'none'; }
 
-  // GESTIÓN DE PRECIO PERSONALIZADO (CONOCIDOS)
+  // GESTIÓN DE PRECIO PERSONALIZADO
   function abrirModalPrecioPersonalizado() {
     document.getElementById('input-precio-especial').value = '';
     document.getElementById('modal-gestionar-cita').style.display = 'none';
@@ -1141,12 +1141,12 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      await supabase.from('citas').update({ estado: 'pagado', precio_personalizado: precioVal }).eq('id', citaSeleccionada.id);
+      await supabase.from('citas').update({ precio_personalizado: precioVal }).eq('id', citaSeleccionada.id);
       cerrarModalPrecioPersonalizado();
       cerrarModalGestion();
       cargarAgendaSemanal();
     } catch (err) {
-      alert("Error al guardar precio personalizado: " + err.message);
+      alert("Error al guardar precio: " + err.message);
     }
   }
 
@@ -1224,14 +1224,23 @@
       const { data: bono } = await supabase.from('bonos').select('*').eq('id', idBono).single();
       if (bono) {
         let nuevasRestantes = bono.sesiones_restantes + cambio;
-        const maxRestantes = bono.sesiones_totales - 1;
+        const maxRestantes = bono.sesiones_totales;
         if (nuevasRestantes < 0) nuevasRestantes = 0;
         if (nuevasRestantes > maxRestantes) nuevasRestantes = maxRestantes;
         await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', idBono);
         cargarListaBonos();
         cargarAgendaSemanal();
+        // Actualizar detalle en modal si está abierto
+        if (citaSeleccionada && citaSeleccionada.cliente_telefono === bono.cliente_telefono) {
+          abrirModalGestion(citaSeleccionada);
+        }
       }
     } catch (err) { alert("Error al modificar sesiones: " + err.message); }
+  }
+
+  async function modificarSesionesBonoDesdeModal(cambio) {
+    if (!bonoIdActualCita) return;
+    await modificarSesionesBono(bonoIdActualCita, cambio);
   }
 
   async function eliminarBono(idBono) {
@@ -1294,7 +1303,6 @@
       if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
       let html = '';
       citas.forEach(cita => {
-        const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : 'Quiromasaje Descontracturante';
         const fechaEsp = formatearFechaEspanol(cita.fecha);
         const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
         const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
@@ -1337,7 +1345,7 @@
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     
-    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : 'Quiromasaje (35€)';
+    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : (cita.precio_personalizado !== null && cita.precio_personalizado !== undefined ? `Especial (${cita.precio_personalizado}€)` : 'Quiromasaje (35€)');
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
 
     bonoIdActualCita = null;
@@ -1354,7 +1362,9 @@
         bonoPrecioTotalActual = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
         bonoPagadoActual = b.monto_pagado !== undefined ? b.monto_pagado : bonoPrecioTotalActual;
         const usadas = b.sesiones_totales - b.sesiones_restantes;
-        infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${usadas} / ${b.sesiones_totales} sesiones`;
+        infoBonoExtra = `<br>🎟 <b>Bono Activo:</b> ${usadas} / ${b.sesiones_totales} sesiones 
+          <button class="btn" style="padding:1px 5px; font-size:10px; background:#ECE7DF; border:none; cursor:pointer;" onclick="modificarSesionesBonoDesdeModal(1)">-</button>
+          <button class="btn" style="padding:1px 5px; font-size:10px; background:#0B1E36; color:#FFF; border:none; cursor:pointer;" onclick="modificarSesionesBonoDesdeModal(-1)">+</button>`;
       }
     } catch (err) { console.error(err); }
 
