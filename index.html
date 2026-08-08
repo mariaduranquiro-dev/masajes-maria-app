@@ -49,8 +49,8 @@
     .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
     label { font-size: 11px; font-weight: bold; color: #0B1E36; display: block; margin-bottom: 4px; font-family: sans-serif; }
-    input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #D1C7B7; border-radius: 8px; font-size: 13px; font-family: sans-serif; background: #FFF; }
-    input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
+    input, textarea, select { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #D1C7B7; border-radius: 8px; font-size: 13px; font-family: sans-serif; background: #FFF; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #0B1E36; }
 
     .btn-confirm { background-color: #B89047; color: #FFFFFF; border: none; width: 100%; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; }
     .btn-confirm:hover { background-color: #9A773B; }
@@ -96,14 +96,6 @@
         <div class="service-price">90 €</div>
       </div>
 
-      <div class="service-card" id="card-servicio-5" onclick="seleccionarServicio(5, 140)">
-        <div>
-          <div class="service-name">Comprar Nuevo Bono (5 Sesiones)</div>
-          <div class="service-desc">5 Sesiones (28€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
-        </div>
-        <div class="service-price">140 €</div>
-      </div>
-
       <div class="service-card" id="card-servicio-3" onclick="seleccionarServicio(3, 0)">
         <div>
           <div class="service-name">Canjear Sesión de Bono Existente</div>
@@ -117,9 +109,11 @@
       <!-- 2. DÍA Y HORA -->
       <div class="section-title">2. Día y Hora</div>
       
-      <div id="contenedor-slots-rapidos" style="display:none;">
+      <div id="contenedor-slots-rapidos" style="display:block;">
         <label>🔔 Próximas Citas Disponibles:</label>
-        <div class="quick-slots-container" id="lista-slots-rapidos"></div>
+        <div class="quick-slots-container" id="lista-slots-rapidos">
+          <span style="font-size:11px; color:#666;">Cargando próximas citas...</span>
+        </div>
       </div>
 
       <label>Fecha de la cita *</label>
@@ -165,7 +159,6 @@
       document.getElementById('servicio_id').value = id;
     }
 
-    // COMPROBACIÓN INTELIGENTE DE BONO ACTIVO POR TELÉFONO
     async function comprobarBonosCliente(tel) {
       const telefonoLimpio = tel.trim();
       const banner = document.getElementById('bono-sugerencia-banner');
@@ -182,7 +175,6 @@
           .gt('sesiones_restantes', 0);
 
         if (bonos && bonos.length > 0) {
-          // Sumar sesiones restantes de sus bonos activos
           let totalRestantes = bonos.reduce((acc, b) => acc + b.sesiones_restantes, 0);
           document.getElementById('bono-sesiones-restantes-num').innerText = totalRestantes;
           banner.style.display = 'block';
@@ -194,6 +186,59 @@
       }
     }
 
+    async function cargarProximasCitasDisponibles() {
+      const container = document.getElementById('lista-slots-rapidos');
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const hoyStr = new Date().toISOString().split('T')[0];
+        const { data: citas } = await supabase.from('citas').select('fecha, hora').gte('fecha', hoyStr).order('fecha', { ascending: true });
+        const { data: bloqueos } = await supabase.from('bloqueos').select('fecha, hora').gte('fecha', hoyStr);
+
+        let ocupadasMap = {};
+        if (citas) citas.forEach(c => ocupadasMap[`${c.fecha}_${c.hora.substring(0,5)}`] = true);
+        let diasBloqueados = {};
+        let horasBloqueadas = {};
+        if (bloqueos) {
+          bloqueos.forEach(b => {
+            if (!b.hora || b.hora === 'ALL') diasBloqueados[b.fecha] = true;
+            else horasBloqueadas[`${b.fecha}_${b.hora.substring(0,5)}`] = true;
+          });
+        }
+
+        let encontrados = 0;
+        let html = '';
+        let d = new Date();
+
+        for (let i = 0; i < 14 && encontrados < 4; i++) {
+          const fStr = d.toISOString().split('T')[0];
+          const diaSem = d.getDay();
+          if (diaSem !== 0 && diaSem !== 6 && !diasBloqueados[fStr]) {
+            for (const hStr of HORARIOS_SLOTS) {
+              const key = `${fStr}_${hStr}`;
+              if (!ocupadasMap[key] && !horasBloqueadas[key]) {
+                const nombreDia = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                html += `<div class="slot-pill" onclick="seleccionarSlotRapido('${fStr}', '${hStr}')">${nombreDia}, ${hStr}h</div>`;
+                encontrados++;
+                if (encontrados >= 4) break;
+              }
+            }
+          }
+          d.setDate(d.getDate() + 1);
+        }
+
+        container.innerHTML = html || '<span style="font-size:11px; color:#666;">No hay huecos próximos.</span>';
+      } catch (err) {
+        container.innerHTML = '<span style="font-size:11px; color:#666;">Selecciona fecha abajo.</span>';
+      }
+    }
+
+    function seleccionarSlotRapido(fecha, hora) {
+      document.getElementById('fecha').value = fecha;
+      validarDiaLaboral().then(() => {
+        document.getElementById('hora').value = hora;
+      });
+    }
+
     async function validarDiaLaboral() {
       const fechaVal = document.getElementById('fecha').value;
       const errorMsg = document.getElementById('error-fin-de-semana');
@@ -203,7 +248,7 @@
 
       const [y, m, d] = fechaVal.split('-');
       const fechaObj = new Date(y, m - 1, d);
-      const diaSemana = fechaObj.getDay(); // 0 = Domingo, 6 = Sábado
+      const diaSemana = fechaObj.getDay();
 
       if (diaSemana === 0 || diaSemana === 6) {
         errorMsg.style.display = 'block';
@@ -213,7 +258,6 @@
         errorMsg.style.display = 'none';
       }
 
-      // Cargar horas disponibles filtrando bloqueadas y ocupadas
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
@@ -265,7 +309,6 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Verificar si el slot sigue libre
         const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', hora);
         if (ocupadas && ocupadas.length > 0) {
           alert("Lo sentimos, este horario acaba de ser reservado por otro cliente. Por favor, elige otra hora.");
@@ -273,7 +316,6 @@
           return;
         }
 
-        // Si es canje de bono (servicio 3), descontar 1 sesión del bono activo del cliente
         if (servicioId === '3') {
           const { data: bonosActivos } = await supabase
             .from('bonos')
@@ -292,21 +334,21 @@
           await supabase.from('bonos').update({ sesiones_restantes: bono.sesiones_restantes - 1 }).eq('id', bono.id);
         }
 
-        // Crear la cita
-        const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
+        const estadoCita = (servicioId === '2' || servicioId === '3') ? 'bono' : 'pendiente';
+        const targetServicioId = (servicioId === '2') ? 2 : (servicioId === '3' ? 2 : 1);
+
         const { error } = await supabase.from('citas').insert([{
           cliente_nombre: nombre,
           cliente_telefono: telefono,
           fecha: fecha,
           hora: hora,
-          servicio_id: parseInt(servicioId),
+          servicio_id: targetServicioId,
           estado: estadoCita,
           nota: nota
         }]);
 
         if (error) throw error;
 
-        // Registrar aviso para María
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
           mensaje: `Nueva reserva de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${hora} h.`
@@ -316,6 +358,7 @@
         document.getElementById('form-reserva').reset();
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
         document.getElementById('bono-sugerencia-banner').style.display = 'none';
+        cargarProximasCitasDisponibles();
 
       } catch (err) {
         alert("Error al reservar: " + err.message);
@@ -329,14 +372,12 @@
     }
 
     function abrirModalConsulta() {
-      // Redirigir o abrir gestión de cita del cliente si procede
       alert("Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.");
     }
 
     function abrirModalBonosCliente() {
       const tel = prompt("Introduce tu número de teléfono para consultar tus bonos:");
       if (!tel) return;
-      // Puedes consultar en una alerta rápida los bonos de ese teléfono
       consultarBonosPorTelefono(tel.trim());
     }
 
@@ -351,13 +392,17 @@
         let msg = "Tus bonos registrados:\n";
         bonos.forEach(b => {
           const usadas = b.sesiones_totales - b.sesiones_restantes;
-          msg = msg + `- Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
+          msg += `- Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
         });
         alert(msg);
       } catch (e) {
         alert("Error al consultar bonos.");
       }
     }
+
+    window.onload = () => {
+      cargarProximasCitasDisponibles();
+    };
   </script>
 
 </body>
