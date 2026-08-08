@@ -488,7 +488,19 @@
           return;
         }
 
-        if (servicioId === '3') {
+        // SI COMPRA UN NUEVO BONO (3 SESIONES), CREAR EL BONO EN LA TABLA BONOS
+        if (servicioId === '2') {
+          await supabase.from('bonos').insert([{
+            cliente_nombre: nombre,
+            cliente_telefono: telefono,
+            sesiones_totales: 3,
+            sesiones_restantes: 2, // 3 sesiones menos 1 consumida en esta reserva actual
+            precio_total: 90,
+            monto_pagado: 0 // Pendiente de pago en estudio
+          }]);
+        }
+        // SI CANJEA SESIÓN DE BONO EXISTENTE
+        else if (servicioId === '3') {
           const { data: bonosActivos } = await supabase
             .from('bonos')
             .select('*')
