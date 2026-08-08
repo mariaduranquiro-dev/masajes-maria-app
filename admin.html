@@ -66,6 +66,7 @@
     .chip:hover { transform: scale(1.02); }
     .chip-pagado { background-color: #E6F4EA; color: #137333; border-left-color: #1e8e3e; }
     .chip-bono { background-color: #F3E8FD; color: #681DA8; border-left-color: #9333EA; }
+    .chip-bono-pagado { background-color: #E0F2FE; color: #0369A1; border-left-color: #0284C7; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; cursor: pointer; }
     .chip-bloqueo:hover { filter: brightness(0.95); }
@@ -233,6 +234,7 @@
       <strong>Leyenda de colores:</strong> &nbsp;<br>
       <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
       <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado (Celeste)</span>
       <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
     </div>
   </div>
@@ -822,6 +824,17 @@
       const { data: bonos } = await supabase.from('bonos').select('*');
       const { data: bloqueos } = await supabase.from('bloqueos').select('*').gte('fecha', fechasSemana[0]).lte('fecha', fechasSemana[5]);
 
+      const bonosPagadosMap = {};
+      if (bonos) {
+        bonos.forEach(b => {
+          const precio = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+          const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precio;
+          if (pagado >= precio) {
+            bonosPagadosMap[b.cliente_telefono] = true;
+          }
+        });
+      }
+
       for (let i = 0; i < 6; i++) {
         const fechaStr = fechasSemana[i];
         const isToday = formatDate(new Date()) === fechaStr;
@@ -878,11 +891,15 @@
           const citaEnSlot = citasSemana ? citasSemana.find(c => c.fecha === fechaStr && c.hora.substring(0,5) === slotHora) : null;
 
           if (citaEnSlot) {
+            const esBonoPagado100 = (citaEnSlot.estado === 'bono' || citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) && bonosPagadosMap[citaEnSlot.cliente_telefono];
             let chipClass = 'chip-pendiente';
             let estadoEtiqueta = citaEnSlot.estado ? citaEnSlot.estado.toUpperCase() : 'PENDIENTE';
 
             if (citaEnSlot.estado === 'pagado') {
               chipClass = 'chip-pagado';
+            } else if (esBonoPagado100) {
+              chipClass = 'chip-bono-pagado';
+              estadoEtiqueta = 'BONO PAGADO';
             } else if (citaEnSlot.estado === 'bono' || citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) {
               chipClass = 'chip-bono';
               estadoEtiqueta = 'BONO';
@@ -1230,7 +1247,6 @@
         await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', idBono);
         cargarListaBonos();
         cargarAgendaSemanal();
-        // Actualizar detalle en modal si está abierto
         if (citaSeleccionada && citaSeleccionada.cliente_telefono === bono.cliente_telefono) {
           abrirModalGestion(citaSeleccionada);
         }
