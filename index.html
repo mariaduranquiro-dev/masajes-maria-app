@@ -2,973 +2,363 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>María Durán - Quiromasajista | Reserva de Citas</title>
-
-  <!-- Configuración PWA / App Instalable -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0B1E36">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="María Durán">
-  <link rel="apple-touch-icon" href="logo.jpg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>María Durán - Reserva de Cita</title>
 
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', sans-serif; }
-    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px 10px; display: flex; justify-content: center; }
+    * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; }
+    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; display: flex; justify-content: center; min-height: 100vh; }
+
+    .container { background: #FFFFFF; border-radius: 16px; padding: 22px; max-width: 440px; width: 100%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.06); height: fit-content; }
     
-    .app-container { 
-      max-width: 420px; 
-      width: 100%; 
-      background: #FFFFFF; 
-      border-radius: 20px; 
-      padding: 20px; 
-      border: 1px solid #E2DBCF; 
-      box-shadow: 0 4px 15px rgba(11, 30, 54, 0.08); 
-      position: relative;
-      overflow: hidden;
-    }
+    .brand-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #E2DBCF; padding-bottom: 14px; }
+    .logo-title { font-size: 20px; font-weight: bold; color: #0B1E36; letter-spacing: 3px; margin: 0; }
+    .logo-subtitle { font-size: 9px; color: #B89047; letter-spacing: 4px; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
 
-    .app-container::before {
-      content: "";
-      position: absolute;
-      top: 36%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 65%;
-      height: 65%;
-      background-image: url('watermark.png');
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: contain;
-      opacity: 0.08;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .app-container > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    .header { text-align: center; border-bottom: 1px solid #E2DBCF; padding-bottom: 12px; margin-bottom: 16px; }
-    .logo-title { font-size: 22px; font-weight: bold; letter-spacing: 3px; color: #0B1E36; margin: 0; }
-    .logo-subtitle { font-size: 10px; color: #B89047; letter-spacing: 4px; margin-top: 4px; font-weight: bold; }
-    
     .section-title { font-size: 13px; font-weight: bold; color: #0B1E36; margin: 16px 0 8px 0; text-transform: uppercase; letter-spacing: 1px; }
-    
-    .card-option { background: rgba(255, 255, 255, 0.9); border: 1.5px solid #E2DBCF; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; user-select: none; }
-    .card-option.selected { border-color: #B89047; background-color: rgba(255, 253, 249, 0.95); box-shadow: 0 0 0 1px #B89047; }
-    .service-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-    .service-price { color: #B89047; }
-    .service-desc { font-size: 11px; color: #666; font-family: sans-serif; }
-    
-    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #D1C7B7; border-radius: 8px; margin-bottom: 10px; font-size: 14px; font-family: sans-serif; background: rgba(255, 255, 255, 0.9); }
-    label { font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px; color: #0B1E36; font-family: sans-serif; }
-    .btn-submit { width: 100%; background-color: #B89047; color: #FFFFFF; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; letter-spacing: 1px; margin-top: 10px; }
-    .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
-    
-    .time-slots { display: flex; gap: 8px; flex-wrap: wrap; }
-    .time-chip { flex: 1; min-width: 70px; text-align: center; padding: 8px; border: 1px solid #D1C7B7; border-radius: 6px; font-size: 13px; font-family: sans-serif; cursor: pointer; user-select: none; background: rgba(255, 255, 255, 0.9); }
-    .time-chip.selected { background: #0B1E36; color: #FFFFFF; border-color: #0B1E36; font-weight: bold; }
-    .time-chip.occupied { background: #EAEAEA; color: #A0AEC0; border-color: #CBD5E0; cursor: not-allowed; text-decoration: line-through; opacity: 0.7; pointer-events: none; }
 
-    .client-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .btn-action-client {
-      flex: 1;
-      background: #FFFFFF;
-      border: 1px solid #0B1E36;
-      color: #0B1E36;
-      padding: 10px;
+    /* TARJETAS DE SERVICIO */
+    .service-card { border: 1.5px solid #E2DBCF; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; background: #FFFDF9; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+    .service-card:hover { border-color: #B89047; }
+    .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
+    .service-card.selected .service-price, .service-card.selected .service-desc { color: #F6F3ED; opacity: 0.9; }
+    
+    .service-name { font-size: 13px; font-weight: bold; }
+    .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
+    .service-price { font-size: 14px; font-weight: bold; color: #B89047; }
+
+    /* AVISO INTELIGENTE DE BONO ACTIVO */
+    #bono-sugerencia-banner {
+      display: none;
+      background: #E0F2FE;
+      border: 1px solid #0284C7;
+      color: #0369A1;
+      padding: 10px 12px;
       border-radius: 8px;
       font-size: 11px;
-      font-weight: bold;
-      cursor: pointer;
       font-family: sans-serif;
-      text-align: center;
-    }
-    .btn-action-client:hover {
-      background-color: #0B1E36;
-      color: #FFFFFF;
+      margin-bottom: 12px;
+      line-height: 1.4;
     }
 
-    .footer-legal { 
-      margin-top: 15px; 
-      border-top: 1px dashed #E2DBCF; 
-      padding-top: 10px; 
-      font-size: 10px; 
-      color: #7A8B9E; 
-      text-align: center; 
-      font-family: sans-serif; 
-      line-height: 1.4; 
-    }
-    .footer-legal p { margin: 4px 0; }
+    /* PÍLLORAS DE HORAS RÁPIDAS */
+    .quick-slots-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .slot-pill { background: #FFFDF9; border: 1px solid #B89047; color: #0B1E36; font-size: 11px; padding: 6px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; font-weight: bold; }
+    .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(2px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 24px; border-radius: 16px; max-width: 380px; width: 100%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; max-height: 90vh; overflow-y: auto; }
-    .modal-icon { font-size: 42px; color: #1e8e3e; margin-bottom: 6px; }
-    .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; }
-    .modal-desc { font-size: 13px; color: #555; font-family: sans-serif; line-height: 1.4; margin-bottom: 15px; text-align: left; }
-    .btn-modal { width: 100%; padding: 12px; background-color: #B89047; color: #FFFFFF; border: none; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; margin-top: 6px; }
-    
-    .calendar-btns { display: flex; gap: 6px; margin-top: 10px; }
-    .btn-cal { flex: 1; padding: 10px 6px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid #D1C7B7; text-decoration: none; display: inline-block; text-align: center; font-family: sans-serif; }
-    .btn-gcal { background: #FFFFFF; color: #1a73e8; border-color: #1a73e8; }
-    .btn-ical { background: #FFFFFF; color: #333333; border-color: #333333; }
+    label { font-size: 11px; font-weight: bold; color: #0B1E36; display: block; margin-bottom: 4px; font-family: sans-serif; }
+    input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #D1C7B7; border-radius: 8px; font-size: 13px; font-family: sans-serif; background: #FFF; }
+    input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
+
+    .btn-confirm { background-color: #B89047; color: #FFFFFF; border: none; width: 100%; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; }
+    .btn-confirm:hover { background-color: #9A773B; }
+
+    .footer-links { display: flex; justify-content: space-between; margin-top: 15px; font-size: 11px; font-family: sans-serif; border-top: 1px solid #E2DBCF; padding-top: 12px; }
+    .footer-links a { color: #0B1E36; text-decoration: none; font-weight: bold; }
+    .footer-links a:hover { color: #B89047; }
+
+    .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; }
   </style>
 </head>
 <body>
 
-<div class="app-container">
-  <div class="header">
-    <h1 class="logo-title">MARÍA DURÁN</h1>
-    <div class="logo-subtitle">— QUIROMASAJISTA —</div>
-  </div>
-
-  <form id="booking-form">
-    <div class="section-title">1. Selecciona el servicio</div>
-    <div id="services-container">
-      <div class="card-option selected" onclick="selectService(this, 1)">
-        <div class="service-header">
-          <span>Quiromasaje Descontracturante</span>
-          <span class="service-price">35 €</span>
-        </div>
-        <div class="service-desc">50 min • Alivio de tensiones en espalda, hombros y cuello.</div>
-      </div>
-      
-      <div class="card-option" onclick="selectService(this, 3)">
-        <div class="service-header">
-          <span>Comprar Nuevo Bono (3 Sesiones)</span>
-          <span class="service-price">90 €</span>
-        </div>
-        <div class="service-desc">3 Sesiones (30€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
-      </div>
-
-      <div class="card-option" id="admin-bono-5-opt" style="display:none;" onclick="selectService(this, 5)">
-        <div class="service-header">
-          <span>Comprar Bono 5 Sesiones (Admin)</span>
-          <span class="service-price">140 €</span>
-        </div>
-        <div class="service-desc">5 Sesiones • Bono especial de 5 sesiones por 140 euros.</div>
-      </div>
-
-      <div class="card-option" onclick="selectService(this, 2)">
-        <div class="service-header">
-          <span>Canjear Sesión de Bono Existente</span>
-          <span class="service-price">BONO</span>
-        </div>
-        <div class="service-desc">50 min • Reserva exclusiva para clientes con bono activo.</div>
-      </div>
-    </div>
-    <input type="hidden" id="servicio_id" value="1">
-
-    <div class="section-title">2. Día y hora</div>
-    
-    <!-- ACCESO RÁPIDO: PRÓXIMAS 3 CITAS DISPONIBLES EN LÍNEA HORIZONTAL -->
-    <div id="quick-slots-box" style="background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 10px; padding: 10px; margin-bottom: 12px;">
-      <div style="font-size: 11px; color: #B89047; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; font-family: sans-serif;">🔔 Próximas citas disponibles:</div>
-      <div id="quick-slots-buttons" style="display: flex; gap: 4px; flex-wrap: nowrap;">
-        <span style="font-size: 11px; color: #666; font-family: sans-serif;">Buscando huecos libres...</span>
-      </div>
+  <div class="container">
+    <div class="brand-header">
+      <h1 class="logo-title">MARÍA DURÁN</h1>
+      <div class="logo-subtitle">— QUIROMASAJISTA —</div>
     </div>
 
-    <label for="fecha">Fecha de la cita *</label>
-    <input type="date" id="fecha" required>
-
-    <label>Horarios disponibles *</label>
-    <div class="time-slots" id="time-slots"></div>
-    <input type="hidden" id="hora" value="">
-
-    <div class="section-title" style="margin-top: 20px;">3. Tus datos de contacto</div>
-    
-    <label for="nombre">Nombre completo *</label>
-    <input type="text" id="nombre" placeholder="Ej. Laura Gómez Ruiz" required>
-
-    <label for="telefono">Teléfono WhatsApp *</label>
-    <input type="tel" id="telefono" placeholder="Ej. 612 345 678" required>
-
-    <label for="nota">¿Alguna dolencia o nota?</label>
-    <textarea id="nota" rows="2" placeholder="Ej. Sobrecarga en la zona lumbar"></textarea>
-
-    <button type="submit" class="btn-submit" id="btn-submit">✓ CONFIRMAR CITA (1 CLIC)</button>
-  </form>
-
-  <div class="client-actions" id="client-actions-box">
-    <button type="button" class="btn-action-client" onclick="abrirModalConsultaCitas()">📅 Gestionar / Anular Cita</button>
-    <button type="button" class="btn-action-client" onclick="abrirModalConsultarBonos()">🎟 Consultar Mis Bonos</button>
-  </div>
-
-  <div class="footer-legal">
-    <p>⏳ <b>Política de cancelación:</b> Por favor, avísanos con al menos 24h de antelación si necesitas modificar o anular tu cita.</p>
-    <p>🔒 <b>Protección de datos (RGPD):</b> Tus datos son tratados con total confidencialidad por María Durán exclusivamente para la gestión de citas y bonos.</p>
-  </div>
-</div>
-
-<!-- Modal: Gestionar / Anular Citas -->
-<div class="modal" id="modal-gestionar-citas">
-  <div class="modal-content">
-    <div class="modal-title">📅 Gestionar Mis Citas</div>
-    <div class="modal-desc">Introduce tu número de teléfono WhatsApp para ver tus citas activas y poder modificarlas o anularlas.</div>
-    
-    <label for="busq-tel-citas" style="text-align:left;">Tu Teléfono WhatsApp *</label>
-    <input type="tel" id="busq-tel-citas" placeholder="Ej. 612345678">
-    <button class="btn-modal" onclick="buscarCitasCliente()">Buscar Mis Citas</button>
-    
-    <div id="lista-citas-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
-    
-    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:10px;" onclick="cerrarModalGestionarCitas()">Cerrar</button>
-  </div>
-</div>
-
-<!-- Modal: Modificar Fecha/Hora de Cita -->
-<div class="modal" id="modal-modificar-cita">
-  <div class="modal-content">
-    <div class="modal-title">✏️ Modificar Cita</div>
-    <div class="modal-desc" id="info-cita-modificar"></div>
-    
-    <label for="nuevo_fecha" style="text-align:left;">Nueva Fecha *</label>
-    <input type="date" id="nuevo_fecha">
-    
-    <label for="nuevo_hora" style="text-align:left;">Nueva Hora *</label>
-    <select id="nuevo_hora">
-      <option value="10:00">10:00 h</option>
-      <option value="11:00">11:00 h</option>
-      <option value="12:00">12:00 h</option>
-      <option value="17:00">17:00 h</option>
-      <option value="18:00">18:00 h</option>
-      <option value="19:00">19:00 h</option>
-      <option value="20:00">20:00 h</option>
-    </select>
-
-    <button class="btn-modal" onclick="ejecutarModificacionCita()">Guardar Cambios</button>
-    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:6px;" onclick="cerrarModalModificarCita()">Volver</button>
-  </div>
-</div>
-
-<!-- Modal: Consultar Bonos -->
-<div class="modal" id="modal-consultar-bonos">
-  <div class="modal-content">
-    <div class="modal-title">🎟 Consultar Mis Bonos</div>
-    <div class="modal-desc">Introduce tu número de teléfono WhatsApp para ver las sesiones restantes de tus bonos activos.</div>
-    
-    <label for="busq-tel-bonos" style="text-align:left;">Tu Teléfono WhatsApp *</label>
-    <input type="tel" id="busq-tel-bonos" placeholder="Ej. 612345678">
-    <button class="btn-modal" onclick="buscarBonosCliente()">Ver Mis Bonos</button>
-    
-    <div id="lista-bonos-cliente" style="margin-top:15px; text-align:left; font-size:12px; font-family:sans-serif;"></div>
-    
-    <button class="btn-modal" style="background:#ECE7DF; color:#333; margin-top:10px;" onclick="cerrarModalConsultarBonos()">Cerrar</button>
-  </div>
-</div>
-
-<!-- Modal Genérico de Notificación Interna -->
-<div class="modal" id="modal-notif">
-  <div class="modal-content" style="text-align: center;">
-    <div class="modal-icon" id="notif-icon">✓</div>
-    <div class="modal-title" id="notif-titulo">Aviso</div>
-    <div class="modal-desc" id="notif-texto" style="text-align: center;"></div>
-    <button class="btn-modal" onclick="cerrarModalNotif()">Aceptar</button>
-  </div>
-</div>
-
-<!-- Modal Confirmación de Anulación -->
-<div class="modal" id="modal-conf-anular">
-  <div class="modal-content" style="text-align: center;">
-    <div class="modal-icon" style="color:#DC2626;">⚠️</div>
-    <div class="modal-title">¿Anular Cita?</div>
-    <div class="modal-desc" id="conf-anular-texto" style="text-align: center;">¿Estás seguro de que deseas anular esta cita?</div>
-    <div style="display:flex; gap:8px; margin-top:10px;">
-      <button class="btn-modal" style="background:#DC2626;" onclick="ejecutarAnulacionCita()">Sí, Anular</button>
-      <button class="btn-modal" style="background:#ECE7DF; color:#333;" onclick="cerrarModalConfAnular()">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Éxito con Botones de Calendario -->
-<div class="modal" id="modal-exito">
-  <div class="modal-content">
-    <div class="modal-icon">✓</div>
-    <div class="modal-title">¡Cita Reservada con Éxito!</div>
-    <div class="modal-desc" id="exito-mensaje"></div>
-    
-    <div class="calendar-btns">
-      <a id="link-gcal" href="#" target="_blank" class="btn-cal btn-gcal">📅 Google Cal</a>
-      <a id="link-ical" href="#" download="cita-maria-duran.ics" class="btn-cal btn-ical">🍏 Apple/Outlook</a>
-    </div>
-
-    <button class="btn-modal" onclick="cerrarModalExito()">Aceptar y Cerrar</button>
-  </div>
-</div>
-
-<div class="modal" id="modal-error">
-  <div class="modal-content">
-    <div class="modal-icon" style="color:#DC2626;">⚠️</div>
-    <div class="modal-title" style="color:#DC2626;">Atención</div>
-    <div class="modal-desc" id="error-mensaje"></div>
-    <button class="btn-modal" style="background:#0B1E36;" onclick="cerrarModalError()">Entendido</button>
-  </div>
-</div>
-
-<script>
-  const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
-  
-  const HORARIOS_ESTANDAR = ['10:00', '11:00', '12:00', '17:00', '18:00', '19:00', '20:00'];
-  let citaEnEdicionId = null;
-  let citaParaAnular = null;
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const isAdminMode = urlParams.get('admin') === 'true';
-
-  if (isAdminMode) {
-    document.getElementById('admin-bono-5-opt').style.display = 'block';
-  }
-
-  function formatearFechaEspanol(fechaStr) {
-    if (!fechaStr) return '';
-    const partes = fechaStr.split('-');
-    if (partes.length === 3) {
-      return `${partes[2]}/${partes[1]}`;
-    }
-    return fechaStr;
-  }
-
-  function normalizarFecha(val) {
-    if (!val) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    const partes = val.split('/');
-    if (partes.length === 3) {
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    }
-    return val;
-  }
-
-  function formatearFechaISO(d) {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  function selectService(element, id) {
-    document.querySelectorAll('.card-option').forEach(el => el.classList.remove('selected'));
-    element.classList.add('selected');
-    document.getElementById('servicio_id').value = id;
-  }
-
-  function selectTime(element, timeVal) {
-    document.querySelectorAll('#time-slots .time-chip').forEach(el => el.classList.remove('selected'));
-    element.classList.add('selected');
-    document.getElementById('hora').value = timeVal;
-  }
-
-  function cerrarModalExito() { document.getElementById('modal-exito').style.display = 'none'; }
-  function cerrarModalError() { document.getElementById('modal-error').style.display = 'none'; }
-
-  function mostrarAviso(titulo, texto, esExito = true) {
-    document.getElementById('notif-titulo').innerText = titulo;
-    document.getElementById('notif-texto').innerText = texto;
-    document.getElementById('notif-icon').innerText = esExito ? '✓' : '⚠️';
-    document.getElementById('notif-icon').style.color = esExito ? '#1e8e3e' : '#DC2626';
-    document.getElementById('modal-notif').style.display = 'flex';
-  }
-  function cerrarModalNotif() { document.getElementById('modal-notif').style.display = 'none'; }
-
-  function abrirModalConsultaCitas() { document.getElementById('busq-tel-citas').value = ''; document.getElementById('lista-citas-cliente').innerHTML = ''; document.getElementById('modal-gestionar-citas').style.display = 'flex'; }
-  function cerrarModalGestionarCitas() { document.getElementById('modal-gestionar-citas').style.display = 'none'; }
-
-  function abrirModalConsultarBonos() { document.getElementById('busq-tel-bonos').value = ''; document.getElementById('lista-bonos-cliente').innerHTML = ''; document.getElementById('modal-consultar-bonos').style.display = 'flex'; }
-  function cerrarModalConsultarBonos() { document.getElementById('modal-consultar-bonos').style.display = 'none'; }
-
-  async function buscarCitasCliente() {
-    const tel = document.getElementById('busq-tel-citas').value.trim();
-    const container = document.getElementById('lista-citas-cliente');
-    if (!tel) { container.innerHTML = '<span style="color:#DC2626;">Introduce tu teléfono.</span>'; return; }
-
-    container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando citas...</div>';
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const hoy = new Date().toISOString().split('T')[0];
-      const { data: citas } = await supabase.from('citas').select('*').eq('cliente_telefono', tel).gte('fecha', hoy).order('fecha', { ascending: true });
-
-      if (!citas || citas.length === 0) {
-        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes citas activas próximas con este teléfono.</p>';
-        return;
-      }
-
-      let html = '';
-      citas.forEach(c => {
-        const fechaEsp = formatearFechaEspanol(c.fecha);
-        html += `<div style="background:#FFFDF9; border:1px solid #E2DBCF; padding:10px; border-radius:8px; margin-bottom:8px;">
-          <b>${c.cliente_nombre}</b><br>
-          📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h<br>
-          <div style="display:flex; gap:6px; margin-top:8px;">
-            <button class="btn" style="background:#0B1E36; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="iniciarModificacionCita(${c.id}, '${c.fecha}', '${c.hora}')">✏️ Modificar</button>
-            <button class="btn" style="background:#DC2626; color:#FFF; flex:1; padding:6px; font-size:10px; border:none; border-radius:4px; cursor:pointer;" onclick="confirmarAnularCita(${c.id}, '${c.estado}', '${c.cliente_telefono}', ${c.servicio_id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}')">🗑 Anular</button>
-          </div>
-        </div>`;
-      });
-      container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = `<span style="color:#DC2626;">Error: ${err.message}</span>`;
-    }
-  }
-
-  function iniciarModificacionCita(id, fechaActual, horaActual) {
-    citaEnEdicionId = id;
-    const fechaEsp = formatearFechaEspanol(fechaActual);
-    document.getElementById('info-cita-modificar').innerHTML = `Modificando la cita del día <b>${fechaEsp}</b> a las <b>${horaActual.substring(0,5)} h</b>.`;
-    document.getElementById('nuevo_fecha').value = fechaActual;
-    document.getElementById('nuevo_hora').value = horaActual.substring(0,5);
-    document.getElementById('modal-gestionar-citas').style.display = 'none';
-    document.getElementById('modal-modificar-cita').style.display = 'flex';
-  }
-
-  function cerrarModalModificarCita() {
-    document.getElementById('modal-modificar-cita').style.display = 'none';
-    document.getElementById('modal-gestionar-citas').style.display = 'flex';
-  }
-
-  async function ejecutarModificacionCita() {
-    if (!citaEnEdicionId) return;
-    const nuevaFecha = document.getElementById('nuevo_fecha').value;
-    const nuevaHora = document.getElementById('nuevo_hora').value;
-    const fechaEsp = formatearFechaEspanol(nuevaFecha);
-
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <form id="form-reserva" onsubmit="enviarReserva(event)">
       
-      const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', citaEnEdicionId);
-      if (ocupadas && ocupadas.length > 0) {
-        mostrarAviso("Atención", "El horario seleccionado ya está ocupado por otra cita. Por favor, elige otro.", false);
-        return;
-      }
+      <!-- 1. SELECCIONA EL SERVICIO -->
+      <div class="section-title">1. Selecciona el Servicio</div>
 
-      const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', citaEnEdicionId).single();
-      const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', citaEnEdicionId);
+      <!-- CHIVATO INTELIGENTE DE BONO -->
+      <div id="bono-sugerencia-banner">
+        💡 <b>¡Hola!</b> Vemos que tienes un bono activo con <b id="bono-sesiones-restantes-num">0</b> sesiones disponibles. Si la cita es para ti, puedes seleccionar directamente <b>"Canjear Sesión de Bono Existente"</b>.
+      </div>
 
-      if (!error) {
-        if (citaAntigua) {
-          await supabase.from('avisos_admin').insert([{
-            tipo: 'modificacion',
-            mensaje: `El cliente ${citaAntigua.cliente_nombre} ha modificado su cita al ${fechaEsp} a las ${nuevaHora.substring(0,5)} h.`
-          }]);
-        }
-
-        cerrarModalModificarCita();
-        cerrarModalGestionarCitas();
-        mostrarAviso("¡Modificación Exitosa!", "Tu cita ha sido actualizada correctamente.", true);
-      } else {
-        mostrarAviso("Atención", "Error al modificar: " + error.message, false);
-      }
-    } catch (err) {
-      mostrarAviso("Atención", "Error: " + err.message, false);
-    }
-  }
-
-  function confirmarAnularCita(idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita) {
-    citaParaAnular = { idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita };
-    document.getElementById('modal-gestionar-citas').style.display = 'none';
-    document.getElementById('modal-conf-anular').style.display = 'flex';
-  }
-
-  function cerrarModalConfAnular() {
-    document.getElementById('modal-conf-anular').style.display = 'none';
-    document.getElementById('modal-gestionar-citas').style.display = 'flex';
-  }
-
-  async function ejecutarAnulacionCita() {
-    if (!citaParaAnular) return;
-    const { idCita, estadoCita, telefonoCliente, servicioId, nombreCliente, fechaCita, horaCita } = citaParaAnular;
-    const fechaEsp = formatearFechaEspanol(fechaCita);
-
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-      if (estadoCita === 'bono' || servicioId === 2 || servicioId === 5) {
-        const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', telefonoCliente.trim()).order('id', { ascending: false }).limit(1);
-        if (bonos && bonos.length > 0) {
-          const bonoActual = bonos[0];
-          if (bonoActual.sesiones_restantes < bonoActual.sesiones_totales) {
-            await supabase.from('bonos').update({ sesiones_restantes: bonoActual.sesiones_restantes + 1 }).eq('id', bonoActual.id);
-          }
-        }
-      }
-
-      const { error } = await supabase.from('citas').delete().eq('id', idCita);
-
-      if (!error) {
-        await supabase.from('avisos_admin').insert([{
-          tipo: 'cancelacion',
-          mensaje: `El cliente ${nombreCliente} ha cancelado su cita del ${fechaEsp} a las ${horaCita.substring(0,5)} h (Hueco liberado).`
-        }]);
-
-        cerrarModalConfAnular();
-        mostrarAviso("Cita Anulada", "La cita ha sido cancelada correctamente y se ha liberado el hueco.", true);
-      } else {
-        cerrarModalConfAnular();
-        mostrarAviso("Atención", "Error al anular: " + error.message, false);
-      }
-    } catch (err) {
-      cerrarModalConfAnular();
-      mostrarAviso("Atención", "Error: " + err.message, false);
-    }
-    citaParaAnular = null;
-  }
-
-  async function buscarBonosCliente() {
-    const tel = document.getElementById('busq-tel-bonos').value.trim();
-    const container = document.getElementById('lista-bonos-cliente');
-    if (!tel) { container.innerHTML = '<span style="color:#DC2626;">Introduce tu teléfono.</span>'; return; }
-
-    container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Buscando bonos...</div>';
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel);
-
-      if (!bonos || bonos.length === 0) {
-        container.innerHTML = '<p style="color:#666; margin-top:10px;">No tienes bonos registrados con este teléfono.</p>';
-        return;
-      }
-
-      let html = '';
-      bonos.forEach(b => {
-        const precioT = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
-        const pagadoT = b.monto_pagado !== undefined ? b.monto_pagado : precioT;
-        const pendiente = precioT - pagadoT;
-        const usadas = b.sesiones_totales - b.sesiones_restantes;
-        html += `<div style="background:#F3E8FD; border:1px solid #D8B4FE; padding:10px; border-radius:8px; margin-bottom:8px; color:#581C87;">
-          <b>Bono de ${b.sesiones_totales} Sesiones</b><br>
-          • Sesiones consumidas: <b>${usadas} / ${b.sesiones_totales}</b><br>
-          ${pendiente > 0 ? `• Pendiente de abono: <b style="color:#DC2626;">${pendiente} €</b>` : '• ¡Bono totalmente pagado!'}
-        </div>`;
-      });
-      container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = `<span style="color:#DC2626;">Error: ${err.message}</span>`;
-    }
-  }
-
-  function prepararEnlacesCalendario(fecha, hora, nombreCliente) {
-    const fechaClean = fecha.replace(/-/g, '');
-    const horaClean = hora.replace(':', '') + '00';
-    const startStr = `${fechaClean}T${horaClean}`;
-
-    let [h, m] = hora.split(':').map(Number);
-    h = (h + 1) % 24;
-    const horaFinStr = String(h).padStart(2, '0') + String(m).padStart(2, '0') + '00';
-    const endStr = `${fechaClean}T${horaFinStr}`;
-
-    const text = encodeURIComponent("Cita Quiromasaje - María Durán");
-    const details = encodeURIComponent(`Cita reservada para ${nombreCliente} en la clínica de María Durán.`);
-    const location = encodeURIComponent("Consulta María Durán");
-    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
-    document.getElementById('link-gcal').href = gCalUrl;
-
-    const icsData = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "BEGIN:VEVENT",
-      `SUMMARY:Cita Quiromasaje - María Durán`,
-      `DESCRIPTION:Cita reservada para ${nombreCliente}.`,
-      `DTSTART:${startStr}`,
-      `DTEND:${endStr}`,
-      `LOCATION:Consulta María Durán`,
-      "END:VEVENT",
-      "END:VCALENDAR"
-    ].join("\n");
-
-    const icsUri = 'data:text/calendar;charset=utf8,' + encodeURIComponent(icsData);
-    const iCalLink = document.getElementById('link-ical');
-    iCalLink.href = icsUri;
-    iCalLink.setAttribute('download', `cita-maria-duran-${fecha}.ics`);
-  }
-
-  // CARGAR PRÓXIMAS 3 CITAS DE FORMA ULTRA RÁPIDA (CON CONSULTA MASIVA EN 1 SOLA PETICIÓN)
-  async function cargarProximosHuecosLibres() {
-    const container = document.getElementById('quick-slots-buttons');
-    if (!container) return;
-    
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
-      let hoy = new Date();
-      let fechaInicioStr = formatearFechaISO(hoy);
-      
-      let fechaFinObj = new Date(hoy);
-      fechaFinObj.setDate(fechaFinObj.getDate() + 45);
-      let fechaFinStr = formatearFechaISO(fechaFinObj);
-      
-      // Obtener todas las citas y bloqueos de golpe en una sola consulta
-      const { data: citas } = await supabase.from('citas').select('fecha, hora').gte('fecha', fechaInicioStr).lte('fecha', fechaFinStr);
-      const { data: bloqueos } = await supabase.from('bloqueos').select('fecha, hora, motivo').gte('fecha', fechaInicioStr).lte('fecha', fechaFinStr);
-      
-      const citasMap = {};
-      if (citas) {
-        citas.forEach(c => {
-          citasMap[`${c.fecha}_${c.hora.substring(0, 5)}`] = true;
-        });
-      }
-      
-      const diasBloqueadosCompletos = {};
-      const horasBloqueadasMap = {};
-      if (bloqueos) {
-        bloqueos.forEach(b => {
-          if (!b.hora || b.hora === 'ALL') {
-            diasBloqueadosCompletos[b.fecha] = true;
-          } else {
-            horasBloqueadasMap[`${b.fecha}_${b.hora.substring(0, 5)}`] = true;
-          }
-        });
-      }
-      
-      let huecosEncontrados = [];
-      let d = new Date(hoy);
-      
-      for (let i = 0; i < 45 && huecosEncontrados.length < 3; i++) {
-        const diaSemana = d.getDay();
-        if (diaSemana !== 0 && diaSemana !== 6) {
-          const fechaStr = formatearFechaISO(d);
-          const esHoy = (i === 0);
-          
-          if (!diasBloqueadosCompletos[fechaStr]) {
-            const ahora = new Date();
-            const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
-            
-            for (const hStr of HORARIOS_ESTANDAR) {
-              const [hh, mm] = hStr.split(':').map(Number);
-              const slotMin = hh * 60 + mm;
-              
-              if (esHoy && slotMin <= horaActualMinutos) continue;
-              
-              const slotKey = `${fechaStr}_${hStr}`;
-              if (citasMap[slotKey] || horasBloqueadasMap[slotKey]) continue;
-              
-              const nombreDiaSemana = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-              huecosEncontrados.push({
-                fecha: fechaStr,
-                hora: hStr,
-                texto: esHoy ? `Hoy, ${hStr}h` : (i === 1 ? `Mañana, ${hStr}h` : `${nombreDiaSemana}, ${hStr}h`)
-              });
-              
-              if (huecosEncontrados.length >= 3) break;
-            }
-          }
-        }
-        d.setDate(d.getDate() + 1);
-      }
-      
-      if (huecosEncontrados.length === 0) {
-        container.innerHTML = '<span style="font-size:11px; color:#888; font-family:sans-serif;">No hay huecos libres próximos.</span>';
-        return;
-      }
-      
-      let html = '';
-      huecosEncontrados.forEach((h) => {
-        html += `<button type="button" class="btn" style="flex:1; background:#FFFDF9; border:1px solid #B89047; color:#0B1E36; padding:6px 2px; font-size:10px; font-weight:bold; border-radius:6px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" onclick="seleccionarHuecoRapido('${h.fecha}', '${h.hora}')">${h.texto}</button>`;
-      });
-      container.innerHTML = html;
-      
-    } catch (err) {
-      console.error(err);
-      container.innerHTML = '<span style="font-size:11px; color:#666; font-family:sans-serif;">Error al cargar huecos.</span>';
-    }
-  }
-
-  function seleccionarHuecoRapido(fecha, hora) {
-    document.getElementById('fecha').value = fecha;
-    actualizarHorariosDisponibles().then(() => {
-      const chips = document.querySelectorAll('#time-slots .time-chip');
-      chips.forEach(chip => {
-        if (chip.innerText.startsWith(hora) && !chip.classList.contains('occupied')) {
-          chip.click();
-        }
-      });
-    });
-  }
-
-  async function actualizarHorariosDisponibles() {
-    const rawFechaVal = document.getElementById('fecha').value;
-    const fechaVal = normalizarFecha(rawFechaVal);
-    const container = document.getElementById('time-slots');
-    if (!fechaVal) return;
-
-    const fechaObj = new Date(fechaVal + 'T00:00:00');
-    const diaSemana = fechaObj.getDay();
-
-    if (!isAdminMode && (diaSemana === 0 || diaSemana === 6)) {
-      document.getElementById('hora').value = '';
-      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>';
-      return;
-    }
-
-    container.innerHTML = '<div style="font-size:12px; color:#666; font-family:sans-serif;">Comprobando disponibilidad...</div>';
-    let horasOcupadas = [];
-    let diaBloqueadoCompleto = false;
-
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
-      const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
-      if (citas) horasOcupadas = citas.map(c => c.hora.substring(0, 5));
-
-      const { data: bloqueos } = await supabase.from('bloqueos').select('*').eq('fecha', fechaVal);
-      if (bloqueos && bloqueos.length > 0) {
-        bloqueos.forEach(b => {
-          if (!b.hora || b.hora === '' || b.hora === 'ALL') {
-            diaBloqueadoCompleto = true;
-          } else {
-            horasOcupadas.push(b.hora.substring(0, 5));
-          }
-        });
-      }
-    } catch (err) { console.error(err); }
-
-    if (!isAdminMode && diaBloqueadoCompleto) {
-      document.getElementById('hora').value = '';
-      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">🔴 Este día no está disponible para citas.</div>';
-      return;
-    }
-
-    container.innerHTML = '';
-    let seleccionAutoHecha = false;
-
-    if (isAdminMode) {
-      const horaActualInput = document.getElementById('hora').value || '10:00';
-      container.innerHTML = `
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="time" id="input_hora_libre" value="${horaActualInput}" onchange="document.getElementById('hora').value = this.value" style="margin:0; font-size:16px; font-weight:bold; color:#0B1E36;">
+      <div class="service-card" id="card-servicio-1" onclick="seleccionarServicio(1, 35)">
+        <div>
+          <div class="service-name">Quiromasaje Descontracturante</div>
+          <div class="service-desc">50 min • Alivio de tensiones en espalda, hombros y cuello.</div>
         </div>
-        <div style="font-size:10px; color:#666; margin-top:4px;">María: Puedes elegir cualquier hora (Fines de semana, 14:00, 16:30, etc.).</div>
-      `;
-      document.getElementById('hora').value = horaActualInput;
-      return;
+        <div class="service-price">35 €</div>
+      </div>
+
+      <div class="service-card" id="card-servicio-2" onclick="seleccionarServicio(2, 90)">
+        <div>
+          <div class="service-name">Comprar Nuevo Bono (3 Sesiones)</div>
+          <div class="service-desc">3 Sesiones (30€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
+        </div>
+        <div class="service-price">90 €</div>
+      </div>
+
+      <div class="service-card" id="card-servicio-5" onclick="seleccionarServicio(5, 140)">
+        <div>
+          <div class="service-name">Comprar Nuevo Bono (5 Sesiones)</div>
+          <div class="service-desc">5 Sesiones (28€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
+        </div>
+        <div class="service-price">140 €</div>
+      </div>
+
+      <div class="service-card" id="card-servicio-3" onclick="seleccionarServicio(3, 0)">
+        <div>
+          <div class="service-name">Canjear Sesión de Bono Existente</div>
+          <div class="service-desc">50 min • Reserva exclusiva para clientes con bono activo.</div>
+        </div>
+        <div class="service-price">BONO</div>
+      </div>
+
+      <input type="hidden" id="servicio_id" required value="">
+
+      <!-- 2. DÍA Y HORA -->
+      <div class="section-title">2. Día y Hora</div>
+      
+      <div id="contenedor-slots-rapidos" style="display:none;">
+        <label>🔔 Próximas Citas Disponibles:</label>
+        <div class="quick-slots-container" id="lista-slots-rapidos"></div>
+      </div>
+
+      <label>Fecha de la cita *</label>
+      <input type="date" id="fecha" required onchange="validarDiaLaboral()">
+
+      <label>Horarios disponibles *</label>
+      <select id="hora" required>
+        <option value="">Selecciona primero una fecha...</option>
+      </select>
+      <div id="error-fin-de-semana" class="error-msg">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>
+
+      <!-- 3. TUS DATOS DE CONTACTO -->
+      <div class="section-title">3. Tus Datos de Contacto</div>
+
+      <label>Nombre completo *</label>
+      <input type="text" id="nombre" required placeholder="Ej. Laura Gómez Ruiz">
+
+      <label>Teléfono WhatsApp *</label>
+      <input type="tel" id="telefono" required placeholder="Ej. 612 345 678" oninput="comprobarBonosCliente(this.value)">
+
+      <label>¿Alguna dolencia o nota?</label>
+      <textarea id="nota" rows="2" placeholder="Ej. Sobrecarga en la zona lumbar"></textarea>
+
+      <div id="error-general" class="error-msg"></div>
+
+      <button type="submit" class="btn-confirm">✓ Confirmar Cita (1 Clic)</button>
+    </form>
+
+    <div class="footer-links">
+      <a href="#" onclick="abrirModalConsulta()">📅 Gestionar / Anular Cita</a>
+      <a href="#" onclick="abrirModalBonosCliente()">🎟 Consultar Mis Bonos</a>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
+    const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+
+    function seleccionarServicio(id, precio) {
+      document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById(`card-servicio-${id}`).classList.add('selected');
+      document.getElementById('servicio_id').value = id;
     }
 
-    const hoyStr = new Date().toISOString().split('T')[0];
-    const esHoy = (fechaVal === hoyStr);
-    const ahora = new Date();
-    const horaActualMinutos = ahora.getHours() * 60 + ahora.getMinutes();
-
-    let haySlotsVisibles = false;
-
-    HORARIOS_ESTANDAR.forEach(horaStr => {
-      const [h, m] = horaStr.split(':').map(Number);
-      const slotMinutos = h * 60 + m;
-
-      if (esHoy && slotMinutos <= horaActualMinutos) {
-        return; 
-      }
-
-      haySlotsVisibles = true;
-      const estaOcupado = horasOcupadas.includes(horaStr);
-      const chip = document.createElement('div');
-      if (estaOcupado) {
-        chip.className = 'time-chip occupied';
-        chip.innerText = horaStr + ' 🔒';
-      } else {
-        chip.className = 'time-chip';
-        chip.innerText = horaStr;
-        chip.onclick = function() { selectTime(this, horaStr); };
-        if (!seleccionAutoHecha) {
-          chip.classList.add('selected');
-          document.getElementById('hora').value = horaStr;
-          seleccionAutoHecha = true;
-        }
-      }
-      container.appendChild(chip);
-    });
-
-    if (!haySlotsVisibles || !seleccionAutoHecha) {
-      document.getElementById('hora').value = '';
-      container.innerHTML = '<div style="font-size:12px; color:#DC2626; font-family:sans-serif; width:100%;">⚠️ No quedan huecos libres para la fecha seleccionada.</div>';
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const inputFecha = document.getElementById('fecha');
-    const hoyFormatted = new Date().toISOString().split('T')[0];
-    
-    const prefillFecha = urlParams.get('fecha');
-    const prefillHora = urlParams.get('hora');
-
-    if (!isAdminMode) {
-      inputFecha.min = hoyFormatted; 
-    }
-
-    inputFecha.value = prefillFecha ? prefillFecha : hoyFormatted;
-    inputFecha.addEventListener('change', actualizarHorariosDisponibles);
-    inputFecha.addEventListener('input', actualizarHorariosDisponibles);
-    inputFecha.addEventListener('blur', actualizarHorariosDisponibles);
-    
-    actualizarHorariosDisponibles();
-    cargarProximosHuecosLibres();
-  });
-
-  document.getElementById('booking-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const horaVal = document.getElementById('hora').value;
-    if (!horaVal) {
-      document.getElementById('error-mensaje').innerText = "Por favor, selecciona un horario disponible.";
-      document.getElementById('modal-error').style.display = 'flex';
-      return;
-    }
-
-    const btn = document.getElementById('btn-submit');
-    btn.disabled = true;
-    btn.innerText = "Guardando reserva...";
-
-    try {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const servicio_id = parseInt(document.getElementById('servicio_id').value, 10);
-      const rawFecha = document.getElementById('fecha').value;
-      const fecha = normalizarFecha(rawFecha);
-      const cliente_nombre = document.getElementById('nombre').value;
-      const cliente_telefono = document.getElementById('telefono').value.trim();
-      const nota = document.getElementById('nota').value;
-      const fechaEsp = formatearFechaEspanol(fecha);
-
-      const { data: citasExistentes } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', horaVal);
-      if (citasExistentes && citasExistentes.length > 0) {
-        document.getElementById('error-mensaje').innerText = "Lo sentimos, este horario ya está ocupado. Por favor, selecciona otro.";
-        document.getElementById('modal-error').style.display = 'flex';
-        btn.disabled = false;
-        btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
+    // COMPROBACIÓN INTELIGENTE DE BONO ACTIVO POR TELÉFONO
+    async function comprobarBonosCliente(tel) {
+      const telefonoLimpio = tel.trim();
+      const banner = document.getElementById('bono-sugerencia-banner');
+      if (telefonoLimpio.length < 6) {
+        banner.style.display = 'none';
         return;
       }
-
-      let estadoCita = 'pendiente';
-      let mensajeBonoTexto = '';
-
-      if (servicio_id === 3) {
-        const nuevoBono = {
-          cliente_nombre: cliente_nombre,
-          cliente_telefono: cliente_telefono,
-          sesiones_totales: 3,
-          sesiones_restantes: 2,
-          precio_total: 90,
-          monto_pagado: 0
-        };
-
-        const { error: errorBono } = await supabase.from('bonos').insert([nuevoBono]);
-
-        if (errorBono) {
-          document.getElementById('error-mensaje').innerText = "Error al crear el bono: " + errorBono.message;
-          document.getElementById('modal-error').style.display = 'flex';
-          btn.disabled = false;
-          btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
-          return;
-        }
-
-        estadoCita = 'bono';
-        mensajeBonoTexto = `<br><br>🎟 <b>¡Nuevo Bono Solicitado (90 €)!</b><br>Has reservado tu 1ª sesión. Te quedan <b>2/3 citas en tu bono</b>.`;
-
-      } else if (servicio_id === 5) {
-        const nuevoBono5 = {
-          cliente_nombre: cliente_nombre,
-          cliente_telefono: cliente_telefono,
-          sesiones_totales: 5,
-          sesiones_restantes: 4,
-          precio_total: 140,
-          monto_pagado: 0
-        };
-
-        const { error: errorBono5 } = await supabase.from('bonos').insert([nuevoBono5]);
-
-        if (errorBono5) {
-          document.getElementById('error-mensaje').innerText = "Error al crear el bono de 5: " + errorBono5.message;
-          document.getElementById('modal-error').style.display = 'flex';
-          btn.disabled = false;
-          btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
-          return;
-        }
-
-        estadoCita = 'bono';
-        mensajeBonoTexto = `<br><br>🎟 <b>¡Nuevo Bono de 5 Sesiones Solicitado (140 €)!</b><br>Has reservado tu 1ª sesión. Te quedan <b>4/5 citas en tu bono</b>.`;
-
-      } else if (servicio_id === 2) {
-        const { data: bonosActivos } = await supabase
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: bonos } = await supabase
           .from('bonos')
           .select('*')
-          .eq('cliente_telefono', cliente_telefono)
-          .gt('sesiones_restantes', 0)
-          .order('id', { ascending: true })
-          .limit(1);
+          .eq('cliente_telefono', telefonoLimpio)
+          .gt('sesiones_restantes', 0);
 
-        if (!bonosActivos || bonosActivos.length === 0) {
-          document.getElementById('error-mensaje').innerHTML = `No se ha encontrado un bono activo con saldo para el teléfono <b>${cliente_telefono}</b>.<br><br>Si deseas comprar uno nuevo, selecciona la opción correspondiente.`;
-          document.getElementById('modal-error').style.display = 'flex';
-          btn.disabled = false;
-          btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
+        if (bonos && bonos.length > 0) {
+          // Sumar sesiones restantes de sus bonos activos
+          let totalRestantes = bonos.reduce((acc, b) => acc + b.sesiones_restantes, 0);
+          document.getElementById('bono-sesiones-restantes-num').innerText = totalRestantes;
+          banner.style.display = 'block';
+        } else {
+          banner.style.display = 'none';
+        }
+      } catch (err) {
+        console.error("Error al comprobar bonos:", err);
+      }
+    }
+
+    async function validarDiaLaboral() {
+      const fechaVal = document.getElementById('fecha').value;
+      const errorMsg = document.getElementById('error-fin-de-semana');
+      const selectHora = document.getElementById('hora');
+      
+      if (!fechaVal) return;
+
+      const [y, m, d] = fechaVal.split('-');
+      const fechaObj = new Date(y, m - 1, d);
+      const diaSemana = fechaObj.getDay(); // 0 = Domingo, 6 = Sábado
+
+      if (diaSemana === 0 || diaSemana === 6) {
+        errorMsg.style.display = 'block';
+        selectHora.innerHTML = '<option value="">Clínica cerrada el fin de semana</option>';
+        return;
+      } else {
+        errorMsg.style.display = 'none';
+      }
+
+      // Cargar horas disponibles filtrando bloqueadas y ocupadas
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
+        const { data: bloqueos } = await supabase.from('bloqueos').select('hora, motivo').eq('fecha', fechaVal);
+
+        let horasOcupadas = new Set();
+        let diaCompletoBloqueado = false;
+
+        if (citas) citas.forEach(c => horasOcupadas.add(c.hora.substring(0,5)));
+        if (bloqueos) {
+          bloqueos.forEach(b => {
+            if (!b.hora || b.hora === 'ALL') diaCompletoBloqueado = true;
+            else horasOcupadas.add(b.hora.substring(0,5));
+          });
+        }
+
+        if (diaCompletoBloqueado) {
+          selectHora.innerHTML = '<option value="">Día completo no disponible / Bloqueado</option>';
           return;
         }
 
-        const bonoActual = bonosActivos[0];
-        const deTotales = bonoActual.sesiones_totales || 3;
-        const nuevasRestantes = bonoActual.sesiones_restantes - 1;
-        const pPendiente = (bonoActual.precio_total || (deTotales === 5 ? 140 : 90)) - (bonoActual.monto_pagado || 0);
+        let html = '<option value="">Selecciona hora...</option>';
+        HORARIOS_SLOTS.forEach(h => {
+          if (!horasOcupadas.has(h)) {
+            html += `<option value="${h}">${h} h</option>`;
+          }
+        });
+        selectHora.innerHTML = html;
 
-        await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', bonoActual.id);
-        
-        estadoCita = 'bono';
+      } catch (err) {
+        console.error(err);
+      }
+    }
 
-        let avisoPagoPendiente = (pPendiente > 0) ? `<br><span style="color:#DC2626; font-size:11px;">⚠️ Recuerda que tienes <b>${pPendiente} € pendientes de abonar</b> de tu bono.</span>` : '';
-        const usadas = deTotales - nuevasRestantes;
-
-        if (nuevasRestantes > 0) {
-          mensajeBonoTexto = `<br><br>🎟 <b>Bono Canjeado:</b> Llevas consumidas <b>${usadas}/${deTotales} sesiones</b>.${avisoPagoPendiente}`;
-        } else {
-          mensajeBonoTexto = `<br><br>🎟 <b>¡Bono Agotado!</b> Has consumido la última sesión (<b>${deTotales}/${deTotales}</b>).${avisoPagoPendiente}`;
-        }
+    async function enviarReserva(e) {
+      e.preventDefault();
+      const servicioId = document.getElementById('servicio_id').value;
+      if (!servicioId) {
+        alert("Por favor, selecciona un servicio.");
+        return;
       }
 
-      const idServicioGuardar = (servicio_id === 3 || servicio_id === 5) ? 2 : servicio_id;
-      const { error } = await supabase
-        .from('citas')
-        .insert([{ servicio_id: idServicioGuardar, fecha, hora: horaVal, cliente_nombre, cliente_telefono, nota, estado: estadoCita }]);
+      const nombre = document.getElementById('nombre').value.trim();
+      const telefono = document.getElementById('telefono').value.trim();
+      const fecha = document.getElementById('fecha').value;
+      const hora = document.getElementById('hora').value;
+      const nota = document.getElementById('nota').value.trim();
 
-      if (error) {
-        document.getElementById('error-mensaje').innerText = "Error al guardar cita: " + error.message;
-        document.getElementById('modal-error').style.display = 'flex';
-      } else {
-        await supabase.from('clientes').upsert([
-          { telefono: cliente_telefono, nombre: cliente_nombre }
-        ], { onConflict: 'telefono', ignoreDuplicates: true });
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        await supabase.from('avisos_admin').insert([{
-          tipo: 'nueva',
-          mensaje: `Nueva reserva de ${cliente_nombre} para el ${fechaEsp} a las ${horaVal} h.`
+        // Verificar si el slot sigue libre
+        const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', hora);
+        if (ocupadas && ocupadas.length > 0) {
+          alert("Lo sentimos, este horario acaba de ser reservado por otro cliente. Por favor, elige otra hora.");
+          validarDiaLaboral();
+          return;
+        }
+
+        // Si es canje de bono (servicio 3), descontar 1 sesión del bono activo del cliente
+        if (servicioId === '3') {
+          const { data: bonosActivos } = await supabase
+            .from('bonos')
+            .select('*')
+            .eq('cliente_telefono', telefono)
+            .gt('sesiones_restantes', 0)
+            .order('id', { ascending: true })
+            .limit(1);
+
+          if (!bonosActivos || bonosActivos.length === 0) {
+            alert("No hemos encontrado ningún bono activo con sesiones disponibles para este teléfono. Por favor, selecciona otro servicio.");
+            return;
+          }
+
+          const bono = bonosActivos[0];
+          await supabase.from('bonos').update({ sesiones_restantes: bono.sesiones_restantes - 1 }).eq('id', bono.id);
+        }
+
+        // Crear la cita
+        const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
+        const { error } = await supabase.from('citas').insert([{
+          cliente_nombre: nombre,
+          cliente_telefono: telefono,
+          fecha: fecha,
+          hora: hora,
+          servicio_id: parseInt(servicioId),
+          estado: estadoCita,
+          nota: nota
         }]);
 
-        if (window.parent && typeof window.parent.cerrarModalCitaManual === 'function') {
-          window.parent.cerrarModalCitaManual();
+        if (error) throw error;
+
+        // Registrar aviso para María
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'nueva',
+          mensaje: `Nueva reserva de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${hora} h.`
+        }]);
+
+        alert("¡Cita reservada con éxito! Te esperamos en el estudio.");
+        document.getElementById('form-reserva').reset();
+        document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('bono-sugerencia-banner').style.display = 'none';
+
+      } catch (err) {
+        alert("Error al reservar: " + err.message);
+      }
+    }
+
+    function formatearFechaEspanol(fechaStr) {
+      if (!fechaStr) return '';
+      const p = fechaStr.split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
+    }
+
+    function abrirModalConsulta() {
+      // Redirigir o abrir gestión de cita del cliente si procede
+      alert("Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.");
+    }
+
+    function abrirModalBonosCliente() {
+      const tel = prompt("Introduce tu número de teléfono para consultar tus bonos:");
+      if (!tel) return;
+      // Puedes consultar en una alerta rápida los bonos de ese teléfono
+      consultarBonosPorTelefono(tel.trim());
+    }
+
+    async function consultarBonosPorTelefono(tel) {
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel);
+        if (!bonos || bonos.length === 0) {
+          alert("No se han encontrado bonos activos para este teléfono.");
           return;
         }
-
-        document.getElementById('exito-mensaje').innerHTML = `¡Gracias, <b>${cliente_nombre}</b>!<br>Tu cita para el día <b>${fechaEsp}</b> a las <b>${horaVal} h</b> ha sido registrada.${mensajeBonoTexto}`;
-        
-        prepararEnlacesCalendario(fecha, horaVal, cliente_nombre);
-
-        document.getElementById('modal-exito').style.display = 'flex';
-        document.getElementById('booking-form').reset();
-        actualizarHorariosDisponibles();
-        cargarProximosHuecosLibres();
+        let msg = "Tus bonos registrados:\n";
+        bonos.forEach(b => {
+          const usadas = b.sesiones_totales - b.sesiones_restantes;
+          msg = msg + `- Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
+        });
+        alert(msg);
+      } catch (e) {
+        alert("Error al consultar bonos.");
       }
-    } catch (err) {
-      document.getElementById('error-mensaje').innerText = "Error: " + err.message;
-      document.getElementById('modal-error').style.display = 'flex';
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "✓ CONFIRMAR CITA (1 CLIC)";
     }
-  });
-</script>
+  </script>
 
 </body>
 </html>
