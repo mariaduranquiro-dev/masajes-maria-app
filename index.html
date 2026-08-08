@@ -29,20 +29,6 @@
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
     .service-price { font-size: 14px; font-weight: bold; color: #B89047; }
 
-    /* AVISO INTELIGENTE DE BONO ACTIVO */
-    #bono-sugerencia-banner {
-      display: none;
-      background: #E0F2FE;
-      border: 1px solid #0284C7;
-      color: #0369A1;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-family: sans-serif;
-      margin-bottom: 12px;
-      line-height: 1.4;
-    }
-
     /* CONTENEDOR DORADO PARA PRÓXIMAS CITAS */
     .proximas-citas-box {
       background: #FFFDF9;
@@ -139,11 +125,6 @@
       <!-- 1. SELECCIONA EL SERVICIO -->
       <div class="section-title">1. Selecciona el Servicio</div>
 
-      <!-- CHIVATO INTELIGENTE DE BONO -->
-      <div id="bono-sugerencia-banner">
-        💡 <b>¡Hola!</b> Vemos que tienes un bono activo con <b id="bono-sesiones-restantes-num">0</b> sesiones disponibles. Si la cita es para ti, puedes seleccionar directamente <b>"Canjear Sesión de Bono Existente"</b>.
-      </div>
-
       <div class="service-card" id="card-servicio-1" onclick="seleccionarServicio(1, 35)">
         <div>
           <div class="service-name">Quiromasaje Descontracturante</div>
@@ -215,7 +196,7 @@
     </div>
   </div>
 
-  <!-- MODAL INTERNO DE AVISOS, CONSULTA Y ÉXITO -->
+  <!-- MODAL INTERNO DE LA WEB -->
   <div class="modal" id="modal-alerta-web">
     <div class="modal-content">
       <div class="modal-icon" id="modal-alerta-icono">⚠️</div>
@@ -242,6 +223,7 @@
     const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+    let ultimoTelefonoVerificado = "";
 
     function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
@@ -301,11 +283,10 @@
 
     async function comprobarBonosCliente(tel) {
       const telefonoLimpio = tel.trim();
-      const banner = document.getElementById('bono-sugerencia-banner');
-      if (telefonoLimpio.length < 6) {
-        banner.style.display = 'none';
+      if (telefonoLimpio.length < 9 || telefonoLimpio === ultimoTelefonoVerificado) {
         return;
       }
+      
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: bonos } = await supabase
@@ -315,11 +296,14 @@
           .gt('sesiones_restantes', 0);
 
         if (bonos && bonos.length > 0) {
+          ultimoTelefonoVerificado = telefonoLimpio;
           let totalRestantes = bonos.reduce((acc, b) => acc + b.sesiones_restantes, 0);
-          document.getElementById('bono-sesiones-restantes-num').innerText = totalRestantes;
-          banner.style.display = 'block';
-        } else {
-          banner.style.display = 'none';
+          mostrarAlertaWeb(
+            "¡Bono Activo Detectado!",
+            `¡Hola! Vemos que tienes un bono activo con ${totalRestantes} sesiones disponibles. Te recomendamos seleccionar "Canjear Sesión de Bono Existente" en el paso 1.`,
+            "🎟",
+            false
+          );
         }
       } catch (err) {
         console.error("Error al comprobar bonos:", err);
@@ -550,7 +534,6 @@
 
         document.getElementById('form-reserva').reset();
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-        document.getElementById('bono-sugerencia-banner').style.display = 'none';
         document.getElementById('contenedor-horas-grid').innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>';
         
         const hoyInit = new Date();
