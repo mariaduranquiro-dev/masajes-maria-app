@@ -461,7 +461,13 @@
         💡 Para crear un nuevo bono, utiliza el botón <b>"Añadir Cita Manual"</b> y selecciona el servicio de bono.
       </div>
 
-      <input type="text" id="input-busqueda-bonos" placeholder="🔍 Buscar por nombre o teléfono..." oninput="filtrarBonosGestor()" style="margin-bottom: 10px;">
+      <input type="text" id="input-busqueda-bonos" placeholder="🔍 Buscar por nombre o teléfono..." oninput="filtrarBonosGestor()" style="margin-bottom: 8px;">
+      
+      <!-- BOTONES DE FILTRO RÁPIDO PARA BONOS -->
+      <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+        <button type="button" class="btn btn-active" id="btn-filtro-todos" onclick="filtrarEstadoBonos('todos')" style="flex: 1; padding: 6px; font-size: 11px; background: #0B1E36; color: #FFF;">Todos</button>
+        <button type="button" class="btn" id="btn-filtro-pendientes" onclick="filtrarEstadoBonos('pendientes')" style="flex: 1; padding: 6px; font-size: 11px; background: #FEE2E2; color: #991B1B; border-color: #FCA5A5;">🔴 Solo Pendientes</button>
+      </div>
 
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; margin-bottom:8px; font-family:sans-serif;">
         Bonos Registrados:
@@ -602,6 +608,7 @@
   let avisosGlobalCache = [];
   let slotSeleccionadoAdmin = null;
   let chartInstanciaEconomica = null;
+  let filtroEstadoBonoActual = 'todos';
   
   let bonoIdActualCita = null;
   let bonoPrecioTotalActual = 0;
@@ -1055,7 +1062,7 @@
         });
       }
 
-      // Pendiente Bonos dinámico según los clientes que tienen citas en este periodo
+      // Pendiente Bonos dinámico según los clientes que tienen citas en este periodo (EXCLUYENDO LOS YA PAGADOS 100%)
       let telefClientesPeriodo = new Set();
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
@@ -1262,9 +1269,42 @@
   async function abrirModalGestorBonos() { 
     document.getElementById('modal-gestor-bonos').style.display = 'flex'; 
     document.getElementById('input-busqueda-bonos').value = '';
+    filtroEstadoBonoActual = 'todos';
+    const btnTodos = document.getElementById('btn-filtro-todos');
+    const btnPend = document.getElementById('btn-filtro-pendientes');
+    if(btnTodos && btnPend) {
+      btnTodos.classList.add('btn-active');
+      btnTodos.style.background = '#0B1E36';
+      btnTodos.style.color = '#FFF';
+      btnPend.classList.remove('btn-active');
+      btnPend.style.background = '#FEE2E2';
+      btnPend.style.color = '#991B1B';
+    }
     cargarListaBonos(); 
   }
   function cerrarModalGestorBonos() { document.getElementById('modal-gestor-bonos').style.display = 'none'; }
+
+  function filtrarEstadoBonos(tipo) {
+    filtroEstadoBonoActual = tipo;
+    const btnTodos = document.getElementById('btn-filtro-todos');
+    const btnPend = document.getElementById('btn-filtro-pendientes');
+    if (tipo === 'todos') {
+      btnTodos.classList.add('btn-active');
+      btnTodos.style.background = '#0B1E36';
+      btnTodos.style.color = '#FFF';
+      btnPend.classList.remove('btn-active');
+      btnPend.style.background = '#FEE2E2';
+      btnPend.style.color = '#991B1B';
+    } else {
+      btnPend.classList.add('btn-active');
+      btnPend.style.background = '#DC2626';
+      btnPend.style.color = '#FFF';
+      btnTodos.classList.remove('btn-active');
+      btnTodos.style.background = '#FFF';
+      btnTodos.style.color = '#0B1E36';
+    }
+    filtrarBonosGestor();
+  }
 
   async function cargarListaBonos() {
     const container = document.getElementById('lista-bonos-activos');
@@ -1273,23 +1313,33 @@
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: bonos } = await supabase.from('bonos').select('*').order('id', { ascending: false });
       cacheBonosGlobal = bonos || [];
-      renderizarListaBonos(cacheBonosGlobal);
+      filtrarBonosGestor();
     } catch (e) { container.innerHTML = `<div style="color:red; font-size:11px;">Error: ${e.message}</div>`; }
   }
 
   function filtrarBonosGestor() {
     const query = document.getElementById('input-busqueda-bonos').value.trim().toLowerCase();
-    const filtrados = cacheBonosGlobal.filter(b => 
-      (b.cliente_nombre && b.cliente_nombre.toLowerCase().includes(query)) || 
-      (b.cliente_telefono && b.cliente_telefono.includes(query))
-    );
+    const filtrados = cacheBonosGlobal.filter(b => {
+      const matchQuery = (b.cliente_nombre && b.cliente_nombre.toLowerCase().includes(query)) || 
+                         (b.cliente_telefono && b.cliente_telefono.includes(query));
+      
+      const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+      const pagado = b.monto_pagado !== undefined ? b.monto_pagado : precioTotal;
+      const pendiente = precioTotal - pagado;
+      const esPendiente = pendiente > 0;
+
+      if (filtroEstadoBonoActual === 'pendientes') {
+        return matchQuery && esPendiente;
+      }
+      return matchQuery;
+    });
     renderizarListaBonos(filtrados);
   }
 
   function renderizarListaBonos(bonos) {
     const container = document.getElementById('lista-bonos-activos');
     if (!bonos || bonos.length === 0) { 
-      container.innerHTML = '<div style="font-size:11px; color:#888; text-align:center; padding:15px;">No hay bonos registrados.</div>'; 
+      container.innerHTML = '<div style="font-size:11px; color:#888; text-align:center; padding:15px;">No hay bonos registrados para este filtro.</div>'; 
       return; 
     }
     let html = '';
