@@ -1005,7 +1005,6 @@
       const { data: citasPeriodo } = await supabase.from('citas').select('*').gte('fecha', startDate).lte('fecha', endDate);
       const { data: pagosPeriodo } = await supabase.from('pagos_bonos').select('*').gte('fecha_pago', startDate).lte('fecha_pago', endDate);
       
-      // Obtener TODAS las citas y pagos para el histórico global desde el principio
       const { data: todasCitas } = await supabase.from('citas').select('*');
       const { data: todosPagosBonos } = await supabase.from('pagos_bonos').select('*');
 
@@ -1031,7 +1030,6 @@
         });
       }
 
-      // Cálculo de Ingresos Totales Globales desde el principio
       let ingresosHistoricos = 0;
       if (todasCitas) {
         todasCitas.forEach(c => {
@@ -1046,7 +1044,7 @@
       }
       const sesionesHistoricas = todasCitas ? todasCitas.length : 0;
 
-      // Pendiente Citas del periodo (SOLO citas sueltas no pagadas, excluyendo bonos)
+      // Pendiente Citas del periodo (EXCLUYENDO bonos)
       let pendienteCitasPeriodo = 0;
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
