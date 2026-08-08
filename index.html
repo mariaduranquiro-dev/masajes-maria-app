@@ -62,24 +62,24 @@
     }
 
     /* PÍLLORAS DE HORAS RÁPIDAS */
-    .quick-slots-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .quick-slots-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
     .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 11px; padding: 6px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; font-weight: bold; font-family: sans-serif; }
     .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
-    /* CUADRÍCULAS DE HORAS CLÁSICAS */
+    /* CUADRÍCULAS DE HORAS CLÁSICAS (4 columnas exactas) */
     .hours-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 12px;
     }
     .hour-box {
       background: #FFFFFF;
       border: 1.5px solid #D1C7B7;
       border-radius: 8px;
-      padding: 10px 4px;
+      padding: 10px 2px;
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
       color: #0B1E36;
       cursor: pointer;
@@ -99,6 +99,7 @@
       color: #9CA3AF;
       border-color: #E5E7EB;
       cursor: not-allowed;
+      font-size: 11px;
     }
 
     label { font-size: 11px; font-weight: bold; color: #0B1E36; display: block; margin-bottom: 4px; font-family: sans-serif; }
@@ -283,7 +284,7 @@
               const key = `${fStr}_${hStr}`;
               if (!ocupadasMap[key] && !horasBloqueadas[key]) {
                 const nombreDia = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-                // Formato limpio: "lun, 24 ago, 10:00h"
+                // Formato exacto limpio: "lun, 24 ago, 10:00h"
                 html += `<div class="slot-pill" onclick="seleccionarSlotRapido('${fStr}', '${hStr}')">${nombreDia}, ${hStr}h</div>`;
                 encontrados++;
                 if (encontrados >= 3) break;
@@ -351,7 +352,7 @@
         let html = '';
         HORARIOS_SLOTS.forEach(h => {
           if (horasOcupadas.has(h)) {
-            html += `<div class="hour-box disabled"><span>${h}</span> 🔒</div>`;
+            html += `<div class="hour-box disabled">${h} 🔒</div>`;
           } else {
             html += `<div class="hour-box" id="hour-box-${h}" onclick="seleccionarHoraBoton('${h}')">${h}</div>`;
           }
