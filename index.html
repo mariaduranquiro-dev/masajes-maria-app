@@ -25,7 +25,6 @@
     .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
     .service-card.selected .service-price, .service-card.selected .service-desc { color: #F6F3ED; opacity: 0.9; }
     
-    .service-info { flex: 1; padding-right: 10px; }
     .service-name { font-size: 13px; font-weight: bold; }
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
     .service-price { font-size: 14px; font-weight: bold; color: #B89047; white-space: nowrap; flex-shrink: 0; }
@@ -104,7 +103,7 @@
 
     /* MODAL INTERNO DE LA WEB */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 380px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; font-family: sans-serif; max-height: 90vh; overflow-y: auto; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 420px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; font-family: sans-serif; max-height: 90vh; overflow-y: auto; }
     .modal-icon { font-size: 38px; margin-bottom: 6px; }
     .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; font-family: 'Georgia', serif; }
     .modal-text { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.4; }
@@ -192,7 +191,7 @@
     </form>
 
     <div class="footer-links">
-      <a href="#" onclick="abrirModalConsulta()">📅 Gestionar / Anular Cita</a>
+      <a href="#" onclick="abrirModalGestionCitas()">📅 Gestionar / Anular Cita</a>
       <a href="#" onclick="abrirModalConsultaBonos()">🎟 Consultar Mis Bonos</a>
     </div>
   </div>
@@ -208,6 +207,13 @@
       <div id="modal-input-telefono-box" style="display: none; margin-bottom: 12px;">
         <input type="tel" id="input-telefono-consulta" placeholder="Introduce tu teléfono..." style="margin-bottom: 8px; text-align: center;">
         <button type="button" class="btn-gold" style="background:#0B1E36; color:#FFF; border:none; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="ejecutarConsultaBonosWeb()">Consultar Bonos</button>
+      </div>
+
+      <!-- Input y contenedor dinámico para gestión de citas del cliente -->
+      <div id="modal-gestion-citas-box" style="display: none; margin-bottom: 12px;">
+        <input type="tel" id="input-telefono-gestion" placeholder="Introduce tu teléfono..." style="margin-bottom: 8px; text-align: center;">
+        <button type="button" style="background:#0B1E36; color:#FFF; border:none; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom: 10px;" onclick="buscarCitasClienteWeb()">Buscar Mis Citas</button>
+        <div id="lista-citas-cliente-encontradas" style="max-height: 220px; overflow-y: auto; text-align: left;"></div>
       </div>
 
       <!-- Botones para calendario -->
@@ -226,19 +232,25 @@
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
     let ultimoTelefonoVerificado = "";
 
-    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
+    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false, mostrarGestionCitas = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
       document.getElementById('modal-alerta-texto').innerText = texto;
       document.getElementById('modal-alerta-icono').innerText = icono;
       
       const telBox = document.getElementById('modal-input-telefono-box');
+      const gestBox = document.getElementById('modal-gestion-citas-box');
       const calBox = document.getElementById('modal-botones-calendario');
 
-      if (mostrarInputTel) {
-        telBox.style.display = 'block';
-        document.getElementById('input-telefono-consulta').value = '';
-      } else {
-        telBox.style.display = 'none';
+      telBox.style.display = mostrarInputTel ? 'block' : 'none';
+      gestBox.style.display = mostrarGestionCitas ? 'block' : 'none';
+
+      if (mostrarInputTel) document.getElementById('input-telefono-consulta').value = document.getElementById('telefono').value || '';
+      if (mostrarGestionCitas) {
+        document.getElementById('input-telefono-gestion').value = document.getElementById('telefono').value || '';
+        document.getElementById('lista-citas-cliente-encontradas').innerHTML = '';
+        if (document.getElementById('telefono').value.trim().length >= 6) {
+          buscarCitasClienteWeb();
+        }
       }
 
       if (mostrarCalendarios) {
@@ -473,19 +485,16 @@
           return;
         }
 
-        // SI COMPRA UN NUEVO BONO (3 SESIONES), CREAR EL BONO EN LA TABLA BONOS
         if (servicioId === '2') {
           await supabase.from('bonos').insert([{
             cliente_nombre: nombre,
             cliente_telefono: telefono,
             sesiones_totales: 3,
-            sesiones_restantes: 2, // 3 sesiones menos 1 consumida en esta reserva actual
+            sesiones_restantes: 2,
             precio_total: 90,
-            monto_pagado: 0 // Pendiente de pago en estudio
+            monto_pagado: 0
           }]);
-        }
-        // SI CANJEA SESIÓN DE BONO EXISTENTE
-        else if (servicioId === '3') {
+        } else if (servicioId === '3') {
           const { data: bonosActivos } = await supabase
             .from('bonos')
             .select('*')
@@ -553,8 +562,90 @@
       return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
     }
 
-    function abrirModalConsulta() {
-      mostrarAlertaWeb("Gestionar Cita", "Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.", "📅", false);
+    function abrirModalGestionCitas() {
+      mostrarAlertaWeb("Gestionar / Anular Cita", "Introduce tu número de teléfono para buscar tus citas activas:", "📅", false, "", "", "", false, true);
+    }
+
+    async function buscarCitasClienteWeb() {
+      const tel = document.getElementById('input-telefono-gestion').value.trim();
+      const container = document.getElementById('lista-citas-cliente-encontradas');
+      if (!tel) {
+        container.innerHTML = '<span style="font-size:11px; color:red;">Introduce un teléfono válido.</span>';
+        return;
+      }
+      container.innerHTML = '<span style="font-size:11px; color:#666;">Buscando citas...</span>';
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: citas } = await supabase.from('citas').select('*').eq('cliente_telefono', tel).order('fecha', { ascending: true });
+        
+        if (!citas || citas.length === 0) {
+          container.innerHTML = '<span style="font-size:11px; color:#888;">No se han encontrado citas para este teléfono.</span>';
+          return;
+        }
+
+        let html = '';
+        citas.forEach(c => {
+          const fechaEsp = formatearFechaEspanol(c.fecha);
+          html += `
+            <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:8px; margin-bottom:8px; font-size:11px;">
+              <b>${c.cliente_nombre}</b><br>
+              📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h<br>
+              <div style="display:flex; gap:6px; margin-top:6px;">
+                <button type="button" class="btn-danger" style="padding:4px 8px; font-size:10px; flex:1;" onclick="anularCitaClienteWeb(${c.id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}')">🗑 Anular</button>
+                <button type="button" class="btn-gold" style="padding:4px 8px; font-size:10px; flex:1;" onclick="pedirModificarCitaWeb(${c.id}, '${c.fecha}', '${c.hora.substring(0,5)}')">✏️ Modificar</button>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = '<span style="font-size:11px; color:red;">Error al buscar.</span>';
+      }
+    }
+
+    async function anularCitaClienteWeb(idCita, nombreCli, fechaCita, horaCita) {
+      if (!confirm(`¿Estás seguro de anular tu cita del ${formatearFechaEspanol(fechaCita)} a las ${horaCita.substring(0,5)} h?`)) return;
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        await supabase.from('citas').delete().eq('id', idCita);
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'cancelacion',
+          mensaje: `El cliente ${nombreCli} ha anulado su cita del ${formatearFechaEspanol(fechaCita)} a las ${horaCita.substring(0,5)} h desde la web.`
+        }]);
+        alert("Cita anulada correctamente.");
+        cerrarModalAlertaWeb();
+        cargarProximasCitasDisponibles();
+      } catch (err) {
+        alert("Error al anular: " + err.message);
+      }
+    }
+
+    function pedirModificarCitaWeb(idCita, fechaAntigua, horaAntigua) {
+      const nuevaFecha = prompt("Introduce la nueva fecha (AAAA-MM-DD):", fechaAntigua);
+      const nuevaHora = prompt("Introduce la nueva hora (HH:MM):", horaAntigua);
+      if (!nuevaFecha || !nuevaHora) return;
+      ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora);
+    }
+
+    async function ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora) {
+      try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', idCita);
+        if (ocupadas && ocupadas.length > 0) {
+          alert("⚠️ Este horario ya está ocupado. Elige otro por favor.");
+          return;
+        }
+        await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', idCita);
+        await supabase.from('avisos_admin').insert([{
+          tipo: 'modificacion',
+          mensaje: `Un cliente ha modificado su cita al ${formatearFechaEspanol(nuevaFecha)} a las ${nuevaHora} h desde la web.`
+        }]);
+        alert("¡Cita modificada con éxito!");
+        cerrarModalAlertaWeb();
+        cargarProximasCitasDisponibles();
+      } catch (err) {
+        alert("Error al modificar: " + err.message);
+      }
     }
 
     function abrirModalConsultaBonos() {
