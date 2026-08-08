@@ -512,6 +512,7 @@
         <button class="btn-status-opt" style="background:#E6F4EA; color:#137333;" onclick="setEstado('pagado')"><span>✓ Marcar como PAGADO (Efectivo/Bizum)</span></button>
         <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstadoBono(3)"><span>🎟 Marcar como Bono de 3 Sesiones</span></button>
         <button class="btn-status-opt" style="background:#E9D5FF; color:#581C87;" onclick="setEstadoBono(5)"><span>🎟 Marcar como Bono de 5 Sesiones</span></button>
+        <button class="btn-status-opt" style="background:#E0F2FE; color:#0369A1;" onclick="setEstadoBonoPagado()"><span>🎟 Marcar como Bono Pagado</span></button>
         <button class="btn-status-opt" style="background:#FEF3C7; color:#92400E;" onclick="setEstado('pendiente')"><span>⏳ Marcar como PENDIENTE</span></button>
       </div>
       <div style="display:flex; gap:6px; margin-top:15px; border-top:1px solid #E2DBCF; padding-top:12px;">
@@ -1135,7 +1136,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1492,6 +1493,48 @@
       cargarAgendaSemanal();
     } catch (err) {
       alert("Error al marcar como bono: " + err.message);
+    }
+  }
+
+  async function setEstadoBonoPagado() {
+    if (!citaSeleccionada) return;
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const targetServicioId = (citaSeleccionada.servicio_id === 5) ? 5 : 2;
+
+      // 1. Marcar cita como bono
+      await supabase.from('citas').update({ estado: 'bono', servicio_id: targetServicioId }).eq('id', citaSeleccionada.id);
+
+      // 2. Buscar bono activo y marcarlo como 100% pagado
+      const { data: bonosActivos } = await supabase
+        .from('bonos')
+        .select('*')
+        .eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim())
+        .order('id', { ascending: false })
+        .limit(1);
+
+      if (bonosActivos && bonosActivos.length > 0) {
+        const b = bonosActivos[0];
+        const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+        await supabase.from('bonos').update({ monto_pagado: precioTotal }).eq('id', b.id);
+      } else {
+        // Si no tiene bono, crear uno de 3 sesiones ya pagado por defecto
+        const sesionesTotales = 3;
+        const precioTotal = 90;
+        await supabase.from('bonos').insert([{
+          cliente_nombre: citaSeleccionada.cliente_nombre,
+          cliente_telefono: citaSeleccionada.cliente_telefono,
+          sesiones_totales: sesionesTotales,
+          sesiones_restantes: sesionesTotales - 1,
+          precio_total: precioTotal,
+          monto_pagado: precioTotal
+        }]);
+      }
+
+      cerrarModalGestion();
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al marcar como bono pagado: " + err.message);
     }
   }
 
