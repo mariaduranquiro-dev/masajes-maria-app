@@ -115,9 +115,9 @@
 
     .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; line-height: 1.4; }
 
-    /* MODAL INTERNO DE ALERTA Y ÉXITO */
+    /* MODAL INTERNO DE LA WEB */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 380px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; font-family: sans-serif; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 380px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; font-family: sans-serif; max-height: 90vh; overflow-y: auto; }
     .modal-icon { font-size: 38px; margin-bottom: 6px; }
     .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; font-family: 'Georgia', serif; }
     .modal-text { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.4; }
@@ -211,24 +211,30 @@
 
     <div class="footer-links">
       <a href="#" onclick="abrirModalConsulta()">📅 Gestionar / Anular Cita</a>
-      <a href="#" onclick="abrirModalBonosCliente()">🎟 Consultar Mis Bonos</a>
+      <a href="#" onclick="abrirModalConsultaBonos()">🎟 Consultar Mis Bonos</a>
     </div>
   </div>
 
-  <!-- MODAL INTERNO DE AVISOS Y ÉXITO -->
+  <!-- MODAL INTERNO DE AVISOS, CONSULTA Y ÉXITO -->
   <div class="modal" id="modal-alerta-web">
     <div class="modal-content">
       <div class="modal-icon" id="modal-alerta-icono">⚠️</div>
       <div class="modal-title" id="modal-alerta-titulo">Aviso</div>
       <div class="modal-text" id="modal-alerta-texto">Mensaje...</div>
       
+      <!-- Input dinámico para consulta de bonos por teléfono -->
+      <div id="modal-input-telefono-box" style="display: none; margin-bottom: 12px;">
+        <input type="tel" id="input-telefono-consulta" placeholder="Introduce tu teléfono..." style="margin-bottom: 8px; text-align: center;">
+        <button type="button" class="btn-gold" style="background:#0B1E36; color:#FFF; border:none; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="ejecutarConsultaBonosWeb()">Consultar Bonos</button>
+      </div>
+
       <!-- Botones para calendario -->
       <div id="modal-botones-calendario" style="display: none; margin-bottom: 12px;">
         <a href="#" id="btn-google-cal" target="_blank" class="cal-btn cal-google">📅 Añadir a Google Calendar</a>
         <a href="#" id="btn-apple-cal" class="cal-btn cal-apple">🍏 Añadir a Calendario (iPhone / Apple)</a>
       </div>
 
-      <button type="button" class="btn-confirm" style="margin-top:0;" onclick="cerrarModalAlertaWeb()">Aceptar</button>
+      <button type="button" id="btn-modal-aceptar" class="btn-confirm" style="margin-top:0;" onclick="cerrarModalAlertaWeb()">Aceptar</button>
     </div>
   </div>
 
@@ -237,12 +243,21 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
 
-    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "") {
+    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
       document.getElementById('modal-alerta-texto').innerText = texto;
       document.getElementById('modal-alerta-icono').innerText = icono;
       
+      const telBox = document.getElementById('modal-input-telefono-box');
       const calBox = document.getElementById('modal-botones-calendario');
+
+      if (mostrarInputTel) {
+        telBox.style.display = 'block';
+        document.getElementById('input-telefono-consulta').value = '';
+      } else {
+        telBox.style.display = 'none';
+      }
+
       if (mostrarCalendarios) {
         calBox.style.display = 'block';
         
@@ -546,28 +561,37 @@
       mostrarAlertaWeb("Gestionar Cita", "Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.", "📅", false);
     }
 
-    function abrirModalBonosCliente() {
-      const tel = prompt("Introduce tu número de teléfono para consultar tus bonos:");
-      if (!tel) return;
-      consultarBonosPorTelefono(tel.trim());
+    function abrirModalConsultaBonos() {
+      mostrarAlertaWeb("Consultar Mis Bonos", "Introduce tu número de teléfono para ver tus bonos disponibles:", "🎟", false, "", "", "", true);
     }
 
-    async function consultarBonosPorTelefono(tel) {
+    async function ejecutarConsultaBonosWeb() {
+      const tel = document.getElementById('input-telefono-consulta').value.trim();
+      if (!tel) {
+        alert("Por favor, introduce un teléfono.");
+        return;
+      }
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel);
         if (!bonos || bonos.length === 0) {
-          mostrarAlertaWeb("Sin Bonos", "No se han encontrado bonos activos para este teléfono.", "ℹ️", false);
+          document.getElementById('modal-alerta-titulo').innerText = "Sin Bonos";
+          document.getElementById('modal-alerta-texto').innerText = "No se han encontrado bonos activos para este teléfono.";
+          document.getElementById('modal-alerta-icono').innerText = "ℹ️";
+          document.getElementById('modal-input-telefono-box').style.display = 'none';
           return;
         }
         let msg = "Tus bonos registrados:\n";
         bonos.forEach(b => {
           const usadas = b.sesiones_totales - b.sesiones_restantes;
-          msg += `- Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
+          msg += `• Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
         });
-        mostrarAlertaWeb("Tus Bonos", msg, "🎟", false);
+        document.getElementById('modal-alerta-titulo').innerText = "Tus Bonos";
+        document.getElementById('modal-alerta-texto').innerText = msg;
+        document.getElementById('modal-alerta-icono').innerText = "🎟";
+        document.getElementById('modal-input-telefono-box').style.display = 'none';
       } catch (e) {
-        mostrarAlertaWeb("Error", "Error al consultar bonos.", "❌", false);
+        alert("Error al consultar bonos.");
       }
     }
 
