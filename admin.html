@@ -158,7 +158,7 @@
     }
 
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 480px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 500px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
     .modal-header { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 12px; border-bottom: 1px solid #E2DBCF; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     
     .status-btn-group { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
@@ -378,7 +378,7 @@
 
   <!-- MODAL: RESUMEN ECONÓMICO -->
   <div class="modal" id="modal-resumen-economico">
-    <div class="modal-content" style="max-width: 460px;">
+    <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header">
         <span>📊 Resumen Económico</span>
         <button class="btn" onclick="cerrarModalResumenEconomico()" style="background:#ECE7DF;">✕</button>
@@ -407,18 +407,22 @@
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
-          <div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
+          <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF;">
             <span style="font-size: 11px; color: #666; display:block;">Ingresos Totales</span>
-            <div id="stat-ingresos-periodo" style="font-size: 20px; font-weight: bold; color: #0B1E36;">0 €</div>
+            <div id="stat-ingresos-periodo" style="font-size: 18px; font-weight: bold; color: #0B1E36;">0 €</div>
           </div>
-          <div style="text-align: right;">
-            <span style="font-size: 11px; color: #666; display:block;">Sesiones</span>
-            <strong id="stat-sesiones-periodo" style="font-size: 14px; color: #0B1E36;">0</strong>
+          <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF; text-align: right;">
+            <span style="font-size: 11px; color: #666; display:block;">Sesiones Realizadas</span>
+            <strong id="stat-sesiones-periodo" style="font-size: 16px; color: #0B1E36;">0</strong>
           </div>
-          <div style="text-align: right;">
+          <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF;">
+            <span style="font-size: 11px; color: #666; display:block;">Pendiente Citas</span>
+            <strong id="stat-pendiente-citas" style="font-size: 16px; color: #D97706;">0 €</strong>
+          </div>
+          <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF; text-align: right;">
             <span style="font-size: 11px; color: #666; display:block;">Pendiente Bonos</span>
-            <strong id="stat-pendiente-bonos" style="font-size: 14px; color: #DC2626;">0 €</strong>
+            <strong id="stat-pendiente-bonos" style="font-size: 16px; color: #DC2626;">0 €</strong>
           </div>
         </div>
 
@@ -631,7 +635,8 @@
 
   function validarAcceso(e) {
     e.preventDefault();
-    if (document.getElementById('pin-input').value === PIN_ACCESO) {
+    const pinVal = document.getElementById('pin-input').value.trim();
+    if (pinVal === PIN_ACCESO) {
       try {
         localStorage.setItem('admin_durán_auth', 'true');
       } catch (err) {}
@@ -1007,28 +1012,50 @@
         });
       }
 
-      let pendienteBonosTotal = 0;
+      // Pendiente Citas del periodo
+      let pendienteCitasPeriodo = 0;
+      if (citasPeriodo) {
+        citasPeriodo.forEach(c => {
+          if (c.estado !== 'pagado') {
+            const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
+            pendienteCitasPeriodo += (precioPersonalizado !== null ? precioPersonalizado : 35);
+          }
+        });
+      }
+
+      // Pendiente Bonos dinámico según los clientes que tienen citas en este periodo
+      let telefClientesPeriodo = new Set();
+      if (citasPeriodo) {
+        citasPeriodo.forEach(c => {
+          if (c.cliente_telefono) telefClientesPeriodo.add(c.cliente_telefono.trim());
+        });
+      }
+
+      let pendienteBonosPeriodo = 0;
       if (bonos) {
         bonos.forEach(b => {
-          const pTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
-          const pPagado = b.monto_pagado !== undefined ? b.monto_pagado : pTotal;
-          const pRestante = pTotal - pPagado;
-          if (pRestante > 0) pendienteBonosTotal += pRestante;
+          if (telefClientesPeriodo.has(b.cliente_telefono.trim())) {
+            const pTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+            const pPagado = b.monto_pagado !== undefined ? b.monto_pagado : pTotal;
+            const pRestante = pTotal - pPagado;
+            if (pRestante > 0) pendienteBonosPeriodo += pRestante;
+          }
         });
       }
 
       document.getElementById('stat-ingresos-periodo').innerText = `${ingresosPeriodo} €`;
       document.getElementById('stat-sesiones-periodo').innerText = sesionesPeriodo;
-      document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosTotal} €`;
+      document.getElementById('stat-pendiente-citas').innerText = `${pendienteCitasPeriodo} €`;
+      document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosPeriodo} €`;
 
-      actualizarGraficoEconomico(ingresosPeriodo, sesionesPeriodo, pendienteBonosTotal);
+      actualizarGraficoEconomico(ingresosPeriodo, sesionesPeriodo, pendienteCitasPeriodo, pendienteBonosPeriodo);
 
     } catch (e) { console.error(e); }
 
     verificarNotificacionesRecientes(false);
   }
 
-  function actualizarGraficoEconomico(ingresos, sesiones, pendiente) {
+  function actualizarGraficoEconomico(ingresos, sesiones, pendCitas, pendBonos) {
     const ctx = document.getElementById('graficoEconomico').getContext('2d');
     if (chartInstanciaEconomica) {
       chartInstanciaEconomica.destroy();
@@ -1036,18 +1063,20 @@
     chartInstanciaEconomica = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['Ingresos (€)', 'Sesiones', 'Bonos Pend. (€)'],
+        labels: ['Ingresos (€)', 'Sesiones', 'Pend. Citas', 'Pend. Bonos'],
         datasets: [{
           label: 'Resumen Periodo',
-          data: [ingresos, sesiones, pendiente],
+          data: [ingresos, sesiones, pendCitas, pendBonos],
           backgroundColor: [
             'rgba(11, 30, 54, 0.85)',
             'rgba(184, 144, 71, 0.85)',
+            'rgba(217, 119, 6, 0.85)',
             'rgba(220, 38, 38, 0.85)'
           ],
           borderColor: [
             '#0B1E36',
             '#B89047',
+            '#D97706',
             '#DC2626'
           ],
           borderWidth: 1.5,
@@ -1136,7 +1165,7 @@
   async function guardarBloqueo(e) {
     e.preventDefault();
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo'].value.trim() };
+    const nuevo = { fecha: document.getElementById('blk_fecha').value, hora: document.getElementById('blk_hora').value, motivo: document.getElementById('blk_motivo').value.trim() };
     await supabase.from('bloqueos').insert([nuevo]);
     document.getElementById('form-bloqueo').reset();
     cargarAgendaSemanal();
@@ -1502,10 +1531,8 @@
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const targetServicioId = (citaSeleccionada.servicio_id === 5) ? 5 : 2;
 
-      // 1. Marcar cita como bono
       await supabase.from('citas').update({ estado: 'bono', servicio_id: targetServicioId }).eq('id', citaSeleccionada.id);
 
-      // 2. Buscar bono activo y marcarlo como 100% pagado
       const { data: bonosActivos } = await supabase
         .from('bonos')
         .select('*')
@@ -1518,7 +1545,6 @@
         const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
         await supabase.from('bonos').update({ monto_pagado: precioTotal }).eq('id', b.id);
       } else {
-        // Si no tiene bono, crear uno de 3 sesiones ya pagado por defecto
         const sesionesTotales = 3;
         const precioTotal = 90;
         await supabase.from('bonos').insert([{
