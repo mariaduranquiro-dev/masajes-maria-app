@@ -409,26 +409,41 @@
 
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
           <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF;">
-            <span style="font-size: 11px; color: #666; display:block;">Ingresos Totales</span>
+            <span style="font-size: 11px; color: #666; display:block;">Ingresos Totales (Periodo)</span>
             <div id="stat-ingresos-periodo" style="font-size: 18px; font-weight: bold; color: #0B1E36;">0 €</div>
           </div>
           <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF; text-align: right;">
-            <span style="font-size: 11px; color: #666; display:block;">Sesiones Realizadas</span>
+            <span style="font-size: 11px; color: #666; display:block;">Sesiones (Periodo)</span>
             <strong id="stat-sesiones-periodo" style="font-size: 16px; color: #0B1E36;">0</strong>
           </div>
           <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF;">
-            <span style="font-size: 11px; color: #666; display:block;">Pendiente Citas</span>
+            <span style="font-size: 11px; color: #666; display:block;">Pendiente Citas (Periodo)</span>
             <strong id="stat-pendiente-citas" style="font-size: 16px; color: #D97706;">0 €</strong>
           </div>
           <div style="background: #FFF; padding: 10px; border-radius: 8px; border: 1px solid #E2DBCF; text-align: right;">
-            <span style="font-size: 11px; color: #666; display:block;">Pendiente Bonos</span>
+            <span style="font-size: 11px; color: #666; display:block;">Pendiente Bonos (Periodo)</span>
             <strong id="stat-pendiente-bonos" style="font-size: 16px; color: #DC2626;">0 €</strong>
           </div>
         </div>
 
+        <!-- HISTÓRICO GLOBAL DESDE EL PRINCIPIO -->
+        <div style="background: #0B1E36; color: #FFF; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center;">
+          <div style="font-size: 10px; color: #B89047; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">📊 Histórico Global desde el Principio</div>
+          <div style="display: flex; justify-content: space-around; margin-top: 8px;">
+            <div>
+              <span style="font-size: 10px; opacity: 0.8;">Ingresos Totales</span>
+              <div id="stat-ingresos-historicos" style="font-size: 16px; font-weight: bold; color: #B89047;">0 €</div>
+            </div>
+            <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 20px;">
+              <span style="font-size: 10px; opacity: 0.8;">Sesiones Totales</span>
+              <div id="stat-sesiones-historicas" style="font-size: 16px; font-weight: bold; color: #FFF;">0</div>
+            </div>
+          </div>
+        </div>
+
         <!-- GRÁFICA ELEGANTE DE RESUMEN ECONÓMICO -->
-        <div style="margin-top: 18px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
-          <canvas id="graficoEconomico" style="max-height: 180px; width: 100%;"></canvas>
+        <div style="margin-top: 15px; border-top: 1px dashed #E2DBCF; padding-top: 12px;">
+          <canvas id="graficoEconomico" style="max-height: 160px; width: 100%;"></canvas>
         </div>
       </div>
       <button class="btn" style="width:100%; padding:10px; margin-top:15px; background:#ECE7DF; color:#333;" onclick="cerrarModalResumenEconomico()">Cerrar</button>
@@ -989,6 +1004,10 @@
 
       const { data: citasPeriodo } = await supabase.from('citas').select('*').gte('fecha', startDate).lte('fecha', endDate);
       const { data: pagosPeriodo } = await supabase.from('pagos_bonos').select('*').gte('fecha_pago', startDate).lte('fecha_pago', endDate);
+      
+      // Obtener TODAS las citas y pagos para el histórico global desde el principio
+      const { data: todasCitas } = await supabase.from('citas').select('*');
+      const { data: todosPagosBonos } = await supabase.from('pagos_bonos').select('*');
 
       let ingresosPeriodo = 0;
       let sesionesPeriodo = citasPeriodo ? citasPeriodo.length : 0;
@@ -1012,13 +1031,28 @@
         });
       }
 
-      // Pendiente Citas del periodo
+      // Cálculo de Ingresos Totales Globales desde el principio
+      let ingresosHistoricos = 0;
+      if (todasCitas) {
+        todasCitas.forEach(c => {
+          if (c.estado === 'pagado') {
+            const pPers = extraerPrecioPersonalizado(c.nota);
+            ingresosHistoricos += (pPers !== null ? Number(pPers) : 35);
+          }
+        });
+      }
+      if (todosPagosBonos) {
+        todosPagosBonos.forEach(p => { ingresosHistoricos += Number(p.monto); });
+      }
+      const sesionesHistoricas = todasCitas ? todasCitas.length : 0;
+
+      // Pendiente Citas del periodo (SOLO citas sueltas no pagadas, excluyendo bonos)
       let pendienteCitasPeriodo = 0;
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
-          if (c.estado !== 'pagado') {
+          if (c.estado !== 'pagado' && c.estado !== 'bono' && c.servicio_id !== 2 && c.servicio_id !== 5) {
             const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
-            pendienteCitasPeriodo += (precioPersonalizado !== null ? precioPersonalizado : 35);
+            pendienteCitasPeriodo += (precioPersonalizado !== null ? Number(precioPersonalizado) : 35);
           }
         });
       }
@@ -1047,6 +1081,9 @@
       document.getElementById('stat-sesiones-periodo').innerText = sesionesPeriodo;
       document.getElementById('stat-pendiente-citas').innerText = `${pendienteCitasPeriodo} €`;
       document.getElementById('stat-pendiente-bonos').innerText = `${pendienteBonosPeriodo} €`;
+
+      document.getElementById('stat-ingresos-historicos').innerText = `${ingresosHistoricos} €`;
+      document.getElementById('stat-sesiones-historicas').innerText = sesionesHistoricas;
 
       actualizarGraficoEconomico(ingresosPeriodo, sesionesPeriodo, pendienteCitasPeriodo, pendienteBonosPeriodo);
 
