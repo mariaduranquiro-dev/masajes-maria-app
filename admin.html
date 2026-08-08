@@ -234,7 +234,7 @@
       <strong>Leyenda de colores:</strong> &nbsp;<br>
       <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
       <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
-      <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado (Celeste)</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado</span>
       <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
     </div>
   </div>
@@ -476,7 +476,7 @@
     </div>
   </div>
 
-  <!-- MODAL: PRECIO ESPECIAL / CONOCIDOS -->
+  <!-- MODAL: ASIGNAR PRECIO -->
   <div class="modal" id="modal-precio-personalizado">
     <div class="modal-content" style="max-width:380px;">
       <div class="modal-header">
@@ -595,6 +595,23 @@
       return `${partes[2]}/${partes[1]}/${partes[0]}`;
     }
     return fechaStr;
+  }
+
+  function extraerPrecioPersonalizado(nota) {
+    if (!nota) return null;
+    const match = nota.match(/\[PRECIO:(\d+(?:\.\d+)?)\]/);
+    return match ? parseFloat(match[1]) : null;
+  }
+
+  function limpiarNotaSinPrecio(nota) {
+    if (!nota) return '';
+    return nota.replace(/\[PRECIO:\d+(?:\.\d+)?\]\s*-?\s*/g, '').trim();
+  }
+
+  function guardarNotaConPrecio(notaActual, precioVal) {
+    const textoLimpio = limpiarNotaSinPrecio(notaActual);
+    const tag = `[PRECIO:${precioVal}]`;
+    return textoLimpio ? `${tag} ${textoLimpio}` : tag;
   }
 
   function verificarAccesoGuardado() {
@@ -905,7 +922,9 @@
               estadoEtiqueta = 'BONO';
             }
 
-            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : (citaEnSlot.precio_personalizado !== null && citaEnSlot.precio_personalizado !== undefined ? `${citaEnSlot.precio_personalizado}€` : '35€');
+            const precioPersonalizado = extraerPrecioPersonalizado(citaEnSlot.nota);
+            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : (precioPersonalizado !== null ? `${precioPersonalizado}€` : '35€');
+            
             colHtml += `
               <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(citaEnSlot)})'>
                 <span class="chip-time">${citaEnSlot.hora.substring(0,5)}</span>
@@ -971,8 +990,9 @@
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
           if (c.estado === 'pagado') {
-            if (c.precio_personalizado !== null && c.precio_personalizado !== undefined) {
-              ingresosPeriodo += Number(c.precio_personalizado);
+            const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
+            if (precioPersonalizado !== null) {
+              ingresosPeriodo += Number(precioPersonalizado);
             } else {
               ingresosPeriodo += 35;
             }
@@ -1158,7 +1178,13 @@
 
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      await supabase.from('citas').update({ precio_personalizado: precioVal }).eq('id', citaSeleccionada.id);
+      const notaActual = citaSeleccionada.nota || '';
+      const nuevaNota = guardarNotaConPrecio(notaActual, precioVal);
+
+      const { error } = await supabase.from('citas').update({ nota: nuevaNota }).eq('id', citaSeleccionada.id);
+      if (error) throw error;
+
+      citaSeleccionada.nota = nuevaNota;
       cerrarModalPrecioPersonalizado();
       cerrarModalGestion();
       cargarAgendaSemanal();
@@ -1361,7 +1387,8 @@
     citaSeleccionada = cita;
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     
-    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : (cita.precio_personalizado !== null && cita.precio_personalizado !== undefined ? `Especial (${cita.precio_personalizado}€)` : 'Quiromasaje (35€)');
+    const precioPersonalizado = extraerPrecioPersonalizado(cita.nota);
+    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : (precioPersonalizado !== null ? `Especial (${precioPersonalizado}€)` : 'Quiromasaje (35€)');
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
 
     bonoIdActualCita = null;
@@ -1384,7 +1411,8 @@
       }
     } catch (err) { console.error(err); }
 
-    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}${infoBonoExtra}<br>${cita.nota ? `📝 <b>Nota:</b> "${cita.nota}"` : ''}`;
+    const notaLimpia = limpiarNotaSinPrecio(cita.nota);
+    document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}${infoBonoExtra}<br>${notaLimpia ? `📝 <b>Nota:</b> "${notaLimpia}"` : ''}`;
     
     const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
