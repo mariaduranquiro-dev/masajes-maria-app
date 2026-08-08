@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>María Durán - Agenda Semanal</title>
+  <title>María Durán - Agenda Semanal Panel de Gestión</title>
 
   <!-- Configuración PWA / App Instalable -->
   <link rel="manifest" href="manifest-admin.json">
@@ -587,7 +587,7 @@
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
       <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center; justify-content: center;">¿Borrar Bono?</div>
-      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;">¿Estás segura de eliminar este bono del gestor?</p>
+      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;" id="c-mensaje-anulacion-bono">¿Estás segura de eliminar este bono y sus citas asociadas?</p>
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacionBono()">Sí, Borrar Bono</button>
         <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color:#333;" onclick="cerrarModalConfirmarAnulacionBono()">Cancelar</button>
@@ -1414,8 +1414,15 @@
     await modificarSesionesBono(bonoIdActualCita, cambio);
   }
 
-  function eliminarBono(idBono) {
+  async function eliminarBono(idBono) {
     bonoIdAEliminar = idBono;
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: bono } = await supabase.from('bonos').select('cliente_nombre').eq('id', idBono).single();
+      if (bono && bono.cliente_nombre) {
+        document.getElementById('c-mensaje-anulacion-bono').innerHTML = `¿Estás segura de eliminar el bono de <b>${bono.cliente_nombre}</b> y sus citas asociadas?`;
+      }
+    } catch(e) {}
     document.getElementById('modal-gestor-bonos').style.display = 'none';
     document.getElementById('modal-confirmar-anulacion-bono').style.display = 'flex';
   }
@@ -1430,7 +1437,19 @@
     if (!bonoIdAEliminar) return;
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      // Obtener el teléfono del bono antes de borrarlo para borrar sus citas asociadas
+      const { data: bonoRec } = await supabase.from('bonos').select('cliente_telefono').eq('id', bonoIdAEliminar).single();
+
+      if (bonoRec && bonoRec.cliente_telefono) {
+        await supabase.from('citas')
+          .delete()
+          .eq('cliente_telefono', bonoRec.cliente_telefono.trim())
+          .eq('estado', 'bono');
+      }
+
       await supabase.from('bonos').delete().eq('id', bonoIdAEliminar);
+
       document.getElementById('modal-confirmar-anulacion-bono').style.display = 'none';
       bonoIdAEliminar = null;
       cargarListaBonos();
@@ -1703,7 +1722,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // Si la cita eliminada es de tipo bono, eliminar automáticamente su bono correspondiente del gestor
       if (citaSeleccionada.cliente_telefono && (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 5)) {
         await supabase.from('bonos').delete().eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim());
       }
