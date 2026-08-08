@@ -66,6 +66,42 @@
     .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 11px; padding: 6px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; font-weight: bold; }
     .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
+    /* CUADRÍCULAS DE HORAS CLÁSICAS */
+    .hours-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .hour-box {
+      background: #FFFDF9;
+      border: 1.5px solid #D1C7B7;
+      border-radius: 8px;
+      padding: 10px 4px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #0B1E36;
+      cursor: pointer;
+      font-family: sans-serif;
+      transition: all 0.2s;
+    }
+    .hour-box:hover {
+      border-color: #0B1E36;
+    }
+    .hour-box.selected {
+      background: #0B1E36;
+      color: #FFFFFF;
+      border-color: #0B1E36;
+    }
+    .hour-box.disabled {
+      background: #E5E7EB;
+      color: #9CA3AF;
+      border-color: #D1D5DB;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
     label { font-size: 11px; font-weight: bold; color: #0B1E36; display: block; margin-bottom: 4px; font-family: sans-serif; }
     input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #D1C7B7; border-radius: 8px; font-size: 13px; font-family: sans-serif; background: #FFF; }
     input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
@@ -139,8 +175,8 @@
       <input type="date" id="fecha" required onchange="validarDiaLaboral()">
 
       <label>Horarios disponibles *</label>
-      <div id="contenedor-horas-dia" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; background: #FFFDF9; border: 1px solid #E2DBCF; border-radius: 8px; padding: 10px; min-height: 48px; align-items: center;">
-        <span style="font-size: 11px; color: #7A8B9E;">Selecciona primero una fecha...</span>
+      <div class="hours-grid" id="contenedor-horas-grid">
+        <div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>
       </div>
       <input type="hidden" id="hora" required value="">
       
@@ -274,7 +310,7 @@
     async function validarDiaLaboral() {
       const fechaVal = document.getElementById('fecha').value;
       const errorMsg = document.getElementById('error-fin-de-semana');
-      const contenedorHoras = document.getElementById('contenedor-horas-dia');
+      const contenedorGrid = document.getElementById('contenedor-horas-grid');
       document.getElementById('hora').value = '';
       
       if (!fechaVal) return;
@@ -285,7 +321,7 @@
 
       if (diaSemana === 0 || diaSemana === 6) {
         errorMsg.style.display = 'block';
-        contenedorHoras.innerHTML = '<span style="font-size: 11px; color: #DC2626;">Clínica cerrada el fin de semana</span>';
+        contenedorGrid.innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">Clínica cerrada el fin de semana</div>';
         return;
       } else {
         errorMsg.style.display = 'none';
@@ -308,18 +344,20 @@
         }
 
         if (diaCompletoBloqueado) {
-          contenedorHoras.innerHTML = '<span style="font-size: 11px; color: #DC2626;">Día completo no disponible / Bloqueado</span>';
+          contenedorGrid.innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">Día completo no disponible / Bloqueado</div>';
           return;
         }
 
         let html = '';
         HORARIOS_SLOTS.forEach(h => {
-          if (!horasOcupadas.has(h)) {
-            html += `<button type="button" class="hour-btn" id="hour-btn-${h}" onclick="seleccionarHoraBoton('${h}')" style="background: #FFFDF9; border: 1.5px solid #B89047; color: #0B1E36; font-size: 12px; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;">${h} h</button>`;
+          if (horasOcupadas.has(h)) {
+            html += `<div class="hour-box disabled"><span>${h}</span><br>🔒</div>`;
+          } else {
+            html += `<div class="hour-box" id="hour-box-${h}" onclick="seleccionarHoraBoton('${h}')">${h}</div>`;
           }
         });
 
-        contenedorHoras.innerHTML = html || '<span style="font-size: 11px; color: #DC2626;">No hay horas libres este día.</span>';
+        contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres este día.</div>';
 
       } catch (err) {
         console.error(err);
@@ -327,18 +365,16 @@
     }
 
     function seleccionarHoraBoton(horaStr) {
-      document.querySelectorAll('.hour-btn').forEach(b => {
-        b.style.background = '#FFFDF9';
-        b.style.color = '#0B1E36';
-        b.style.borderColor = '#B89047';
+      document.querySelectorAll('.hour-box').forEach(b => {
+        if (!b.classList.contains('disabled')) {
+          b.classList.remove('selected');
+        }
       });
-      const btn = document.getElementById(`hour-btn-${horaStr}`);
-      if (btn) {
-        btn.style.background = '#0B1E36';
-        btn.style.color = '#FFFFFF';
-        btn.style.borderColor = '#0B1E36';
+      const box = document.getElementById(`hour-box-${horaStr}`);
+      if (box && !box.classList.contains('disabled')) {
+        box.classList.add('selected');
+        document.getElementById('hora').value = horaStr;
       }
-      document.getElementById('hora').value = horaStr;
     }
 
     async function enviarReserva(e) {
@@ -411,7 +447,7 @@
         document.getElementById('form-reserva').reset();
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
         document.getElementById('bono-sugerencia-banner').style.display = 'none';
-        document.getElementById('contenedor-horas-dia').innerHTML = '<span style="font-size: 11px; color: #7A8B9E;">Selecciona primero una fecha...</span>';
+        document.getElementById('contenedor-horas-grid').innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>';
         cargarProximasCitasDisponibles();
 
       } catch (err) {
