@@ -61,12 +61,12 @@
       font-family: sans-serif;
     }
 
-    /* PÍLLORAS DE HORAS RÁPIDAS */
-    .quick-slots-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
-    .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 11px; padding: 6px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; font-weight: bold; font-family: sans-serif; }
+    /* PÍLLORAS RECTANGULARES SIN DESLIZADOR */
+    .quick-slots-container { display: flex; gap: 6px; justify-content: space-between; width: 100%; }
+    .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 10px; padding: 6px 4px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: bold; font-family: sans-serif; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
-    /* CUADRÍCULAS DE HORAS CLÁSICAS (4 columnas exactas) */
+    /* CUADRÍCULAS DE HORAS CLÁSICAS */
     .hours-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -79,7 +79,7 @@
       border-radius: 8px;
       padding: 10px 2px;
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: bold;
       color: #0B1E36;
       cursor: pointer;
@@ -113,7 +113,7 @@
     .footer-links a { color: #0B1E36; text-decoration: none; font-weight: bold; }
     .footer-links a:hover { color: #B89047; }
 
-    .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; }
+    .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; line-height: 1.4; }
   </style>
 </head>
 <body>
@@ -449,6 +449,11 @@
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
         document.getElementById('bono-sugerencia-banner').style.display = 'none';
         document.getElementById('contenedor-horas-grid').innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>';
+        
+        // Reiniciar fecha a hoy tras reservar
+        const hoyInit = new Date();
+        document.getElementById('fecha').value = `${hoyInit.getFullYear()}-${String(hoyInit.getMonth() + 1).padStart(2, '0')}-${String(hoyInit.getDate()).padStart(2, '0')}`;
+        validarDiaLaboral();
         cargarProximasCitasDisponibles();
 
       } catch (err) {
@@ -492,6 +497,15 @@
     }
 
     window.onload = () => {
+      // Establecer fecha de hoy por defecto al cargar la página
+      const hoyInit = new Date();
+      const yInit = hoyInit.getFullYear();
+      const mInit = String(hoyInit.getMonth() + 1).padStart(2, '0');
+      const dInit = String(hoyInit.getDate()).padStart(2, '0');
+      const fechaHoyStr = `${yInit}-${mInit}-${dInit}`;
+      
+      document.getElementById('fecha').value = fechaHoyStr;
+      validarDiaLaboral();
       cargarProximasCitasDisponibles();
     };
   </script>
