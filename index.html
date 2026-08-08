@@ -25,9 +25,10 @@
     .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
     .service-card.selected .service-price, .service-card.selected .service-desc { color: #F6F3ED; opacity: 0.9; }
     
+    .service-info { flex: 1; padding-right: 10px; }
     .service-name { font-size: 13px; font-weight: bold; }
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
-    .service-price { font-size: 14px; font-weight: bold; color: #B89047; }
+    .service-price { font-size: 14px; font-weight: bold; color: #B89047; white-space: nowrap; flex-shrink: 0; }
 
     /* CONTENEDOR DORADO PARA PRÓXIMAS CITAS */
     .proximas-citas-box {
@@ -126,7 +127,7 @@
       <div class="section-title">1. Selecciona el Servicio</div>
 
       <div class="service-card" id="card-servicio-1" onclick="seleccionarServicio(1, 35)">
-        <div>
+        <div class="service-info">
           <div class="service-name">Quiromasaje Descontracturante</div>
           <div class="service-desc">50 min • Alivio de tensiones en espalda, hombros y cuello.</div>
         </div>
@@ -134,7 +135,7 @@
       </div>
 
       <div class="service-card" id="card-servicio-2" onclick="seleccionarServicio(2, 90)">
-        <div>
+        <div class="service-info">
           <div class="service-name">Comprar Nuevo Bono (3 Sesiones)</div>
           <div class="service-desc">3 Sesiones (30€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
         </div>
@@ -142,7 +143,7 @@
       </div>
 
       <div class="service-card" id="card-servicio-3" onclick="seleccionarServicio(3, 0)">
-        <div>
+        <div class="service-info">
           <div class="service-name">Canjear Sesión de Bono Existente</div>
           <div class="service-desc">50 min • Reserva exclusiva para clientes con bono activo.</div>
         </div>
