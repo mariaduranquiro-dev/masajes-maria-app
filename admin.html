@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>María Durán - Agenda Semanal Panel de Gestión</title>
+  <title>María Durán - Agenda Semanal</title>
 
   <!-- Configuración PWA / App Instalable -->
   <link rel="manifest" href="manifest-admin.json">
@@ -569,7 +569,7 @@
     </div>
   </div>
 
-  <!-- MODAL ANULACION -->
+  <!-- MODAL ANULACION CITA -->
   <div class="modal" id="modal-confirmar-anulacion">
     <div class="modal-content" style="text-align: center;">
       <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
@@ -578,6 +578,19 @@
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacion()">Sí, Borrar Cita</button>
         <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color:#333;" onclick="cerrarModalConfirmarAnulacion()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ANULACION BONO (IN-APP) -->
+  <div class="modal" id="modal-confirmar-anulacion-bono">
+    <div class="modal-content" style="text-align: center;">
+      <div style="font-size: 38px; margin-bottom: 6px;">⚠️</div>
+      <div class="modal-header" style="border: none; margin-bottom: 4px; text-align: center; justify-content: center;">¿Borrar Bono?</div>
+      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px; line-height: 1.4;">¿Estás segura de eliminar este bono del gestor?</p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 12px;" onclick="ejecutarEliminacionBono()">Sí, Borrar Bono</button>
+        <button class="btn" style="flex: 1; padding: 12px; font-size: 12px; background: #ECE7DF; color:#333;" onclick="cerrarModalConfirmarAnulacionBono()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -605,6 +618,7 @@
   let citaSeleccionada = null;
   let bloqueoSeleccionado = null;
   let bonoPagoSeleccionado = null;
+  let bonoIdAEliminar = null;
   let avisosGlobalCache = [];
   let slotSeleccionadoAdmin = null;
   let chartInstanciaEconomica = null;
@@ -1400,16 +1414,30 @@
     await modificarSesionesBono(bonoIdActualCita, cambio);
   }
 
-  async function eliminarBono(idBono) {
-    if (confirm("¿Estás segura de eliminar este bono? Esto corregirá cualquier duplicidad en tu resumen económico.")) {
-      try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        await supabase.from('bonos').delete().eq('id', idBono);
-        cargarListaBonos();
-        cargarAgendaSemanal();
-      } catch (err) {
-        alert("Error al eliminar bono: " + err.message);
-      }
+  function eliminarBono(idBono) {
+    bonoIdAEliminar = idBono;
+    document.getElementById('modal-gestor-bonos').style.display = 'none';
+    document.getElementById('modal-confirmar-anulacion-bono').style.display = 'flex';
+  }
+
+  function cerrarModalConfirmarAnulacionBono() {
+    document.getElementById('modal-confirmar-anulacion-bono').style.display = 'none';
+    document.getElementById('modal-gestor-bonos').style.display = 'flex';
+    bonoIdAEliminar = null;
+  }
+
+  async function ejecutarEliminacionBono() {
+    if (!bonoIdAEliminar) return;
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('bonos').delete().eq('id', bonoIdAEliminar);
+      document.getElementById('modal-confirmar-anulacion-bono').style.display = 'none';
+      bonoIdAEliminar = null;
+      cargarListaBonos();
+      cargarAgendaSemanal();
+      document.getElementById('modal-gestor-bonos').style.display = 'flex';
+    } catch (err) {
+      alert("Error al eliminar bono: " + err.message);
     }
   }
 
@@ -1672,11 +1700,21 @@
 
   async function ejecutarEliminacion() {
     if (!citaSeleccionada) return;
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
-    document.getElementById('modal-confirmar-anulacion').style.display = 'none';
-    citaSeleccionada = null;
-    cargarAgendaSemanal();
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      
+      // Si la cita eliminada es de tipo bono, eliminar automáticamente su bono correspondiente del gestor
+      if (citaSeleccionada.cliente_telefono && (citaSeleccionada.estado === 'bono' || citaSeleccionada.servicio_id === 2 || citaSeleccionada.servicio_id === 5)) {
+        await supabase.from('bonos').delete().eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim());
+      }
+
+      await supabase.from('citas').delete().eq('id', citaSeleccionada.id);
+      document.getElementById('modal-confirmar-anulacion').style.display = 'none';
+      citaSeleccionada = null;
+      cargarAgendaSemanal();
+    } catch (err) {
+      alert("Error al eliminar cita: " + err.message);
+    }
   }
 
   window.onload = verificarAccesoGuardado;
