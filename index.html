@@ -25,6 +25,7 @@
     .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
     .service-card.selected .service-price, .service-card.selected .service-desc { color: #F6F3ED; opacity: 0.9; }
     
+    .service-info { flex: 1; padding-right: 10px; }
     .service-name { font-size: 13px; font-weight: bold; }
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
     .service-price { font-size: 14px; font-weight: bold; color: #B89047; white-space: nowrap; flex-shrink: 0; }
@@ -591,7 +592,7 @@
               <b>${c.cliente_nombre}</b><br>
               📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h<br>
               <div style="display:flex; gap:6px; margin-top:6px;">
-                <button type="button" class="btn-danger" style="padding:4px 8px; font-size:10px; flex:1;" onclick="anularCitaClienteWeb(${c.id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}')">🗑 Anular</button>
+                <button type="button" class="btn-danger" style="padding:4px 8px; font-size:10px; flex:1;" onclick="anularCitaClienteWeb(${c.id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}', '${c.estado || ''}', ${c.servicio_id || 1})">🗑 Anular</button>
                 <button type="button" class="btn-gold" style="padding:4px 8px; font-size:10px; flex:1;" onclick="pedirModificarCitaWeb(${c.id}, '${c.fecha}', '${c.hora.substring(0,5)}')">✏️ Modificar</button>
               </div>
             </div>
@@ -603,10 +604,26 @@
       }
     }
 
-    async function anularCitaClienteWeb(idCita, nombreCli, fechaCita, horaCita) {
+    async function anularCitaClienteWeb(idCita, nombreCli, fechaCita, horaCita, estadoCita, servicioIdCita) {
       if (!confirm(`¿Estás seguro de anular tu cita del ${formatearFechaEspanol(fechaCita)} a las ${horaCita.substring(0,5)} h?`)) return;
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Si la cita anulada era de bono, restaurar sesión o eliminar bono si estaba intacto
+        const { data: citaTarget } = await supabase.from('citas').select('*').eq('id', idCita).single();
+        if (citaTarget && (citaTarget.estado === 'bono' || citaTarget.servicio_id === 2 || citaTarget.servicio_id === 5)) {
+          const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaTarget.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
+          if (bonos && bonos.length > 0) {
+            const bono = bonos[0];
+            const nuevasRestantes = bono.sesiones_restantes + 1;
+            if (nuevasRestantes >= bono.sesiones_totales) {
+              await supabase.from('bonos').delete().eq('id', bono.id);
+            } else {
+              await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', bono.id);
+            }
+          }
+        }
+
         await supabase.from('citas').delete().eq('id', idCita);
         await supabase.from('avisos_admin').insert([{
           tipo: 'cancelacion',
