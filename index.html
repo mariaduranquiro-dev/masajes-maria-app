@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; }
-    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; display: flex; justify-content: center; min-height: 100vh; }
+    body { background-color: #F6F3ED; color: #0B1E36; margin: 0; padding: 15px; display: flex; justify-content: center; min-height: 100vh; position: relative; }
 
     .container { background: #FFFFFF; border-radius: 16px; padding: 22px; max-width: 440px; width: 100%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.06); height: fit-content; }
     
@@ -61,9 +61,9 @@
       font-family: sans-serif;
     }
 
-    /* PÍLLORAS RECTANGULARES SIN DESLIZADOR */
-    .quick-slots-container { display: flex; gap: 6px; justify-content: space-between; width: 100%; }
-    .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 10px; padding: 6px 4px; border-radius: 8px; cursor: pointer; text-align: center; font-weight: bold; font-family: sans-serif; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* PÍLLORAS DE HORAS RÁPIDAS */
+    .quick-slots-container { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+    .slot-pill { background: #FFFFFF; border: 1px solid #B89047; color: #0B1E36; font-size: 11px; padding: 6px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; font-weight: bold; font-family: sans-serif; }
     .slot-pill:hover { background: #0B1E36; color: #FFF; }
 
     /* CUADRÍCULAS DE HORAS CLÁSICAS */
@@ -114,6 +114,16 @@
     .footer-links a:hover { color: #B89047; }
 
     .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; line-height: 1.4; }
+
+    /* MODAL INTERNO DE ALERTA Y ÉXITO */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
+    .modal-content { background: #FFFFFF; padding: 22px; border-radius: 16px; max-width: 380px; width: 92%; border: 1px solid #E2DBCF; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; font-family: sans-serif; }
+    .modal-icon { font-size: 38px; margin-bottom: 6px; }
+    .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; font-family: 'Georgia', serif; }
+    .modal-text { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.4; }
+    .cal-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-weight: bold; font-size: 12px; text-decoration: none; text-align: center; }
+    .cal-google { background: #1A73E8; color: #FFF; }
+    .cal-apple { background: #0B1E36; color: #FFF; border: 1px solid #B89047; }
   </style>
 </head>
 <body>
@@ -205,10 +215,70 @@
     </div>
   </div>
 
+  <!-- MODAL INTERNO DE AVISOS Y ÉXITO -->
+  <div class="modal" id="modal-alerta-web">
+    <div class="modal-content">
+      <div class="modal-icon" id="modal-alerta-icono">⚠️</div>
+      <div class="modal-title" id="modal-alerta-titulo">Aviso</div>
+      <div class="modal-text" id="modal-alerta-texto">Mensaje...</div>
+      
+      <!-- Botones para calendario (se muestran solo al reservar con éxito) -->
+      <div id="modal-botones-calendario" style="display: none; margin-bottom: 12px;">
+        <a href="#" id="btn-google-cal" target="_blank" class="cal-btn cal-google">📅 Añadir a Google Calendar</a>
+        <a href="#" id="btn-apple-cal" class="cal-btn cal-apple">🍏 Añadir a Calendario (iPhone / Apple)</a>
+      </div>
+
+      <button type="button" class="btn-confirm" style="margin-top:0;" onclick="cerrarModalAlertaWeb()">Aceptar</button>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+
+    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "") {
+      document.getElementById('modal-alerta-titulo').innerText = titulo;
+      document.getElementById('modal-alerta-texto').innerText = texto;
+      document.getElementById('modal-alerta-icono').innerText = icono;
+      
+      const calBox = document.getElementById('modal-botones-calendario');
+      if (mostrarCalendarios) {
+        calBox.style.display = 'block';
+        
+        // Generar enlaces de calendario
+        const [yyyy, mm, dd] = fechaCita.split('-');
+        const [hh, min] = horaCita.split(':');
+        
+        const fechaInicio = new Date(yyyy, mm - 1, dd, hh, min);
+        const fechaFin = new Date(fechaInicio.getTime() + 50 * 60000); // 50 minutos de sesión
+
+        const formatIso = (d) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+        const startIso = formatIso(fechaInicio);
+        const endIso = formatIso(fechaFin);
+
+        const tituloEvento = encodeURIComponent("Cita Quiromasaje - María Durán");
+        const descEvento = encodeURIComponent(`Cita reservada para ${nombreCliente} en el estudio de María Durán.`);
+        const urlGoogle = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${tituloEvento}&dates=${startIso}/${endIso}&details=${descEvento}&location=Estudio+de+Fisioterapia+y+Quiromasaje`;
+        
+        document.getElementById('btn-google-cal').href = urlGoogle;
+
+        // Archivo ICS para Apple / iPhone
+        const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Cita Quiromasaje - María Durán\nDESCRIPTION:Cita reservada para ${nombreCliente}.\nLOCATION:Estudio María Durán\nDTSTART:${startIso}\nDTEND:${endIso}\nEND:VEVENT\nEND:VCALENDAR`;
+        const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+        document.getElementById('btn-apple-cal').href = window.URL.createObjectURL(blob);
+        document.getElementById('btn-apple-cal').download = `cita-maria-duran-${fechaCita}.ics`;
+
+      } else {
+        calBox.style.display = 'none';
+      }
+
+      document.getElementById('modal-alerta-web').style.display = 'flex';
+    }
+
+    function cerrarModalAlertaWeb() {
+      document.getElementById('modal-alerta-web').style.display = 'none';
+    }
 
     function seleccionarServicio(id, precio) {
       document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
@@ -284,7 +354,6 @@
               const key = `${fStr}_${hStr}`;
               if (!ocupadasMap[key] && !horasBloqueadas[key]) {
                 const nombreDia = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-                // Formato exacto limpio: "lun, 24 ago, 10:00h"
                 html += `<div class="slot-pill" onclick="seleccionarSlotRapido('${fStr}', '${hStr}')">${nombreDia}, ${hStr}h</div>`;
                 encontrados++;
                 if (encontrados >= 3) break;
@@ -382,12 +451,12 @@
       e.preventDefault();
       const servicioId = document.getElementById('servicio_id').value;
       if (!servicioId) {
-        alert("Por favor, selecciona un servicio.");
+        mostrarAlertaWeb("Atención", "Por favor, selecciona un servicio antes de confirmar tu cita.", "⚠️", false);
         return;
       }
       const horaVal = document.getElementById('hora').value;
       if (!horaVal) {
-        alert("Por favor, selecciona una hora disponible.");
+        mostrarAlertaWeb("Atención", "Por favor, selecciona una hora disponible en el calendario.", "⚠️", false);
         return;
       }
 
@@ -401,7 +470,7 @@
 
         const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', horaVal);
         if (ocupadas && ocupadas.length > 0) {
-          alert("Lo sentimos, este horario acaba de ser reservado por otro cliente. Por favor, elige otra hora.");
+          mostrarAlertaWeb("Horario Ocupado", "Lo sentimos, este horario acaba de ser reservado por otro cliente. Por favor, elige otra hora.", "⚠️", false);
           validarDiaLaboral();
           return;
         }
@@ -416,7 +485,7 @@
             .limit(1);
 
           if (!bonosActivos || bonosActivos.length === 0) {
-            alert("No hemos encontrado ningún bono activo con sesiones disponibles para este teléfono. Por favor, selecciona otro servicio.");
+            mostrarAlertaWeb("Bono No Encontrado", "No hemos encontrado ningún bono activo con sesiones disponibles para este teléfono. Por favor, selecciona otro servicio.", "❌", false);
             return;
           }
 
@@ -444,20 +513,29 @@
           mensaje: `Nueva reserva de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${horaVal} h.`
         }]);
 
-        alert("¡Cita reservada con éxito! Te esperamos en el estudio.");
+        // MOSTRAR MODAL DE ÉXITO CON BOTONES DE CALENDARIO
+        mostrarAlertaWeb(
+          "¡Cita Reservada con Éxito!",
+          `Te esperamos en el estudio el ${formatearFechaEspanol(fecha)} a las ${horaVal} h.`,
+          "🎉",
+          true,
+          fecha,
+          horaVal,
+          nombre
+        );
+
         document.getElementById('form-reserva').reset();
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
         document.getElementById('bono-sugerencia-banner').style.display = 'none';
         document.getElementById('contenedor-horas-grid').innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>';
         
-        // Reiniciar fecha a hoy tras reservar
         const hoyInit = new Date();
         document.getElementById('fecha').value = `${hoyInit.getFullYear()}-${String(hoyInit.getMonth() + 1).padStart(2, '0')}-${String(hoyInit.getDate()).padStart(2, '0')}`;
         validarDiaLaboral();
         cargarProximasCitasDisponibles();
 
       } catch (err) {
-        alert("Error al reservar: " + err.message);
+        mostrarAlertaWeb("Error", "Error al reservar: " + err.message, "❌", false);
       }
     }
 
@@ -468,7 +546,7 @@
     }
 
     function abrirModalConsulta() {
-      alert("Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.");
+      mostrarAlertaWeb("Gestionar Cita", "Introduce tu teléfono en el campo correspondiente o contacta directamente con María por WhatsApp.", "📅", false);
     }
 
     function abrirModalBonosCliente() {
@@ -482,7 +560,7 @@
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', tel);
         if (!bonos || bonos.length === 0) {
-          alert("No se han encontrado bonos activos para este teléfono.");
+          mostrarAlertaWeb("Sin Bonos", "No se han encontrado bonos activos para este teléfono.", "ℹ️", false);
           return;
         }
         let msg = "Tus bonos registrados:\n";
@@ -490,14 +568,13 @@
           const usadas = b.sesiones_totales - b.sesiones_restantes;
           msg += `- Bono de ${b.sesiones_totales} sesiones: ${usadas} usadas, ${b.sesiones_restantes} restantes.\n`;
         });
-        alert(msg);
+        mostrarAlertaWeb("Tus Bonos", msg, "🎟", false);
       } catch (e) {
-        alert("Error al consultar bonos.");
+        mostrarAlertaWeb("Error", "Error al consultar bonos.", "❌", false);
       }
     }
 
     window.onload = () => {
-      // Establecer fecha de hoy por defecto al cargar la página
       const hoyInit = new Date();
       const yInit = hoyInit.getFullYear();
       const mInit = String(hoyInit.getMonth() + 1).padStart(2, '0');
