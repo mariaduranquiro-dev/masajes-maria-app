@@ -322,19 +322,11 @@
         <input type="tel" id="mk_telefono" required placeholder="Ej. 612345678">
 
         <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Fecha *</label>
-        <input type="date" id="mk_fecha" required>
+        <input type="date" id="mk_fecha" required onchange="cargarHorasDisponiblesMaquillaje()">
 
         <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Hora *</label>
         <select id="mk_hora" required>
-          <option value="09:00">09:00 h</option>
-          <option value="10:00">10:00 h</option>
-          <option value="11:00">11:00 h</option>
-          <option value="12:00">12:00 h</option>
-          <option value="13:00">13:00 h</option>
-          <option value="17:00">17:00 h</option>
-          <option value="18:00">18:00 h</option>
-          <option value="19:00">19:00 h</option>
-          <option value="20:00">20:00 h</option>
+          <option value="">Selecciona fecha primero...</option>
         </select>
 
         <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Precio (€) *</label>
@@ -346,6 +338,16 @@
         <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Cita Maquillaje</button>
         <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalMaquillaje()">Cancelar</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MENSAJE DE ÉXITO IN-APP (SIN ALERT NATIVO) -->
+  <div class="modal" id="modal-exito-admin">
+    <div class="modal-content" style="text-align: center; max-width: 360px;">
+      <div style="font-size: 38px; margin-bottom: 6px;" id="exito-admin-icono">🎉</div>
+      <div class="modal-header" style="justify-content: center; border:none; margin-bottom:4px;" id="exito-admin-titulo">Éxito</div>
+      <p style="font-size: 13px; font-family: sans-serif; color: #555; margin-bottom: 20px;" id="exito-admin-texto">Mensaje...</p>
+      <button type="button" class="btn btn-gold" style="width: 100%; padding: 12px;" onclick="cerrarModalExitoAdmin()">Aceptar</button>
     </div>
   </div>
 
@@ -910,14 +912,69 @@
   }
 
   // ACCIÓN RÁPIDA: MAQUILLAJE / PEINADO
-  function abrirModalMaquillaje() {
+  async function abrirModalMaquillaje() {
     document.getElementById('form-maquillaje').reset();
     document.getElementById('mk_fecha').value = formatDate(new Date());
+    await cargarHorasDisponiblesMaquillaje();
     document.getElementById('modal-maquillaje').style.display = 'flex';
   }
 
   function cerrarModalMaquillaje() {
     document.getElementById('modal-maquillaje').style.display = 'none';
+  }
+
+  async function cargarHorasDisponiblesMaquillaje() {
+    const fechaVal = document.getElementById('mk_fecha').value;
+    const selectHora = document.getElementById('mk_hora');
+    if (!fechaVal) return;
+
+    selectHora.innerHTML = '<option value="">Cargando horas...</option>';
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
+      const { data: bloqueos } = await supabase.from('bloqueos').select('hora, motivo').eq('fecha', fechaVal);
+
+      let horasOcupadas = new Set();
+      let diaCompletoBloqueado = false;
+
+      if (citas) citas.forEach(c => horasOcupadas.add(c.hora.substring(0,5)));
+      if (bloqueos) {
+        bloqueos.forEach(b => {
+          if (!b.hora || b.hora === 'ALL') diaCompletoBloqueado = true;
+          else horasOcupadas.add(b.hora.substring(0,5));
+        });
+      }
+
+      if (diaCompletoBloqueado) {
+        selectHora.innerHTML = '<option value="">Día completo bloqueado</option>';
+        return;
+      }
+
+      let html = '';
+      HORARIOS_SLOTS.forEach(h => {
+        if (horasOcupadas.has(h)) {
+          html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
+        } else {
+          html += `<option value="${h}">${h} h</option>`;
+        }
+      });
+
+      selectHora.innerHTML = html || '<option value="">No hay horas libres</option>';
+    } catch (err) {
+      console.error(err);
+      selectHora.innerHTML = '<option value="">Error al cargar horas</option>';
+    }
+  }
+
+  function mostrarExitoAdmin(titulo, texto) {
+    document.getElementById('exito-admin-titulo').innerText = titulo;
+    document.getElementById('exito-admin-texto').innerText = texto;
+    document.getElementById('modal-exito-admin').style.display = 'flex';
+  }
+
+  function cerrarModalExitoAdmin() {
+    document.getElementById('modal-exito-admin').style.display = 'none';
   }
 
   async function guardarCitaMaquillaje(e) {
@@ -937,10 +994,10 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // Comprobar si el hueco está ocupado
       const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', hora);
       if (ocupadas && ocupadas.length > 0) {
         alert("⚠️ Este horario ya está ocupado en el calendario. Por favor, selecciona otra hora.");
+        await cargarHorasDisponiblesMaquillaje();
         return;
       }
 
@@ -951,7 +1008,7 @@
         cliente_telefono: telefono,
         fecha: fecha,
         hora: hora,
-        servicio_id: 1, // Satisfacer clave foránea
+        servicio_id: 1,
         estado: 'maquillaje',
         nota: notaFinal
       }]);
@@ -965,7 +1022,7 @@
 
       cerrarModalMaquillaje();
       cargarAgendaSemanal();
-      alert("¡Cita de Maquillaje / Peinado añadida con éxito!");
+      mostrarExitoAdmin("¡Éxito!", "¡Cita de Maquillaje / Peinado añadida con éxito!");
     } catch (err) {
       alert("Error al guardar la cita: " + err.message);
     }
