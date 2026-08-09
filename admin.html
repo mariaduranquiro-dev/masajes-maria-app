@@ -69,6 +69,7 @@
     .chip-bono-pagado { background-color: #E0F2FE; color: #0369A1; border-left-color: #0284C7; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
     .chip-maquillaje { background-color: #FCE7F3; color: #9D174D; border-left-color: #EC4899; }
+    .chip-personal { background-color: #F1F5F9; color: #334155; border-left-color: #64748B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; cursor: pointer; }
     .chip-bloqueo:hover { filter: brightness(0.95); }
 
@@ -131,7 +132,7 @@
     }
     .floating-lock:hover { transform: scale(1.08); background-color: #DC2626; }
 
-    /* BOTONES DE CABECERA (BUSCAR Y AVISOS) */
+    /* BOTONES DE CABECERA (BUSCAR, PERSONAL Y AVISOS) */
     .header-btn {
       background: #FFFDF9;
       border: 1.5px solid #B89047;
@@ -189,6 +190,9 @@
       <button class="header-btn" onclick="abrirModalBuscadorCitas()" title="Buscar Citas por Nombre o Teléfono">
         🔍 Buscar
       </button>
+      <button class="header-btn" onclick="abrirModalPersonal()" title="Añadir Compromiso Personal o Descanso">
+        📌 Personal
+      </button>
       <button class="header-btn bell-btn" onclick="abrirModalNotificaciones()" title="Centro de Notificaciones">
         🔔 Avisos <span id="bell-count" class="bell-badge">0</span>
       </button>
@@ -237,6 +241,7 @@
       <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
       <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado</span>
       <span class="legend-item"><span class="legend-dot" style="background: #EC4899;"></span> Maquillaje / Peinado</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #64748B;"></span> Compromiso Personal</span>
       <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
     </div>
   </div>
@@ -337,6 +342,31 @@
 
         <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Cita Maquillaje</button>
         <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalMaquillaje()">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: COMPROMISO PERSONAL -->
+  <div class="modal" id="modal-personal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <span>📌 Nuevo Compromiso Personal</span>
+        <button class="btn" onclick="cerrarModalPersonal()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <form id="form-personal" onsubmit="guardarCompromisoPersonal(event)">
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Descripción del compromiso *</label>
+        <input type="text" id="pr_descripcion" required placeholder="Ej. Ir al banco, Masaje personal...">
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Fecha *</label>
+        <input type="date" id="pr_fecha" required onchange="cargarHorasDisponiblesPersonal()">
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Hora *</label>
+        <select id="pr_hora" required>
+          <option value="">Selecciona fecha primero...</option>
+        </select>
+
+        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Compromiso</button>
+        <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalPersonal()">Cancelar</button>
       </form>
     </div>
   </div>
@@ -967,16 +997,6 @@
     }
   }
 
-  function mostrarExitoAdmin(titulo, texto) {
-    document.getElementById('exito-admin-titulo').innerText = titulo;
-    document.getElementById('exito-admin-texto').innerText = texto;
-    document.getElementById('modal-exito-admin').style.display = 'flex';
-  }
-
-  function cerrarModalExitoAdmin() {
-    document.getElementById('modal-exito-admin').style.display = 'none';
-  }
-
   async function guardarCitaMaquillaje(e) {
     e.preventDefault();
     const nombre = document.getElementById('mk_nombre').value.trim();
@@ -1026,6 +1046,113 @@
     } catch (err) {
       alert("Error al guardar la cita: " + err.message);
     }
+  }
+
+  // ACCIÓN RÁPIDA: COMPROMISO PERSONAL
+  async function abrirModalPersonal() {
+    document.getElementById('form-personal').reset();
+    document.getElementById('pr_fecha').value = formatDate(new Date());
+    await cargarHorasDisponiblesPersonal();
+    document.getElementById('modal-personal').style.display = 'flex';
+  }
+
+  function cerrarModalPersonal() {
+    document.getElementById('modal-personal').style.display = 'none';
+  }
+
+  async function cargarHorasDisponiblesPersonal() {
+    const fechaVal = document.getElementById('pr_fecha').value;
+    const selectHora = document.getElementById('pr_hora');
+    if (!fechaVal) return;
+
+    selectHora.innerHTML = '<option value="">Cargando horas...</option>';
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: citas } = await supabase.from('citas').select('hora').eq('fecha', fechaVal);
+      const { data: bloqueos } = await supabase.from('bloqueos').select('hora, motivo').eq('fecha', fechaVal);
+
+      let horasOcupadas = new Set();
+      let diaCompletoBloqueado = false;
+
+      if (citas) citas.forEach(c => horasOcupadas.add(c.hora.substring(0,5)));
+      if (bloqueos) {
+        bloqueos.forEach(b => {
+          if (!b.hora || b.hora === 'ALL') diaCompletoBloqueado = true;
+          else horasOcupadas.add(b.hora.substring(0,5));
+        });
+      }
+
+      if (diaCompletoBloqueado) {
+        selectHora.innerHTML = '<option value="">Día completo bloqueado</option>';
+        return;
+      }
+
+      let html = '';
+      HORARIOS_SLOTS.forEach(h => {
+        if (horasOcupadas.has(h)) {
+          html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
+        } else {
+          html += `<option value="${h}">${h} h</option>`;
+        }
+      });
+
+      selectHora.innerHTML = html || '<option value="">No hay horas libres</option>';
+    } catch (err) {
+      console.error(err);
+      selectHora.innerHTML = '<option value="">Error al cargar horas</option>';
+    }
+  }
+
+  async function guardarCompromisoPersonal(e) {
+    e.preventDefault();
+    const descripcion = document.getElementById('pr_descripcion').value.trim();
+    const fecha = document.getElementById('pr_fecha').value;
+    const hora = document.getElementById('pr_hora').value;
+
+    if (!descripcion || !fecha || !hora) {
+      alert("Por favor, completa la descripción, fecha y hora.");
+      return;
+    }
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', hora);
+      if (ocupadas && ocupadas.length > 0) {
+        alert("⚠️ Este horario ya está ocupado en el calendario. Por favor, selecciona otra hora.");
+        await cargarHorasDisponiblesPersonal();
+        return;
+      }
+
+      const { error } = await supabase.from('citas').insert([{
+        cliente_nombre: `📌 ${descripcion}`,
+        cliente_telefono: 'PERSONAL',
+        fecha: fecha,
+        hora: hora,
+        servicio_id: 1,
+        estado: 'personal',
+        nota: '[PRECIO:0]'
+      }]);
+
+      if (error) throw error;
+
+      cerrarModalPersonal();
+      cargarAgendaSemanal();
+      mostrarExitoAdmin("¡Éxito!", "¡Compromiso personal añadido correctamente a la agenda!");
+    } catch (err) {
+      alert("Error al guardar compromiso: " + err.message);
+    }
+  }
+
+  function mostrarExitoAdmin(titulo, texto) {
+    document.getElementById('exito-admin-titulo').innerText = titulo;
+    document.getElementById('exito-admin-texto').innerText = texto;
+    document.getElementById('modal-exito-admin').style.display = 'flex';
+  }
+
+  function cerrarModalExitoAdmin() {
+    document.getElementById('modal-exito-admin').style.display = 'none';
   }
 
   // CALENDARIO DE 6 DÍAS (LUNES A SÁBADO) SIEMPRE EXPANDIDO
@@ -1129,6 +1256,9 @@
             } else if (citaEnSlot.estado === 'maquillaje') {
               chipClass = 'chip-maquillaje';
               estadoEtiqueta = 'MAQUILLAJE';
+            } else if (citaEnSlot.estado === 'personal') {
+              chipClass = 'chip-personal';
+              estadoEtiqueta = 'PERSONAL';
             } else if (esBonoPagado100) {
               chipClass = 'chip-bono-pagado';
               estadoEtiqueta = 'BONO PAGADO';
@@ -1141,6 +1271,8 @@
             let precioTexto = '35€';
             if (citaEnSlot.estado === 'maquillaje' || precioPersonalizado !== null) {
               precioTexto = `${precioPersonalizado !== null ? precioPersonalizado : 0}€`;
+            } else if (citaEnSlot.estado === 'personal') {
+              precioTexto = 'Libre';
             } else if (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) {
               precioTexto = 'Bono';
             }
@@ -1208,7 +1340,7 @@
       const { data: todosPagosBonos } = await supabase.from('pagos_bonos').select('*');
 
       let ingresosPeriodo = 0;
-      let sesionesPeriodo = citasPeriodo ? citasPeriodo.length : 0;
+      let sesionesPeriodo = citasPeriodo ? citasPeriodo.filter(c => c.estado !== 'personal').length : 0;
 
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
@@ -1241,13 +1373,13 @@
       if (todosPagosBonos) {
         todosPagosBonos.forEach(p => { ingresosHistoricos += Number(p.monto); });
       }
-      const sesionesHistoricas = todasCitas ? todasCitas.length : 0;
+      const sesionesHistoricas = todasCitas ? todasCitas.filter(c => c.estado !== 'personal').length : 0;
 
-      // Pendiente Citas del periodo (EXCLUYENDO bonos y maquillaje)
+      // Pendiente Citas del periodo (EXCLUYENDO bonos, maquillaje y personal)
       let pendienteCitasPeriodo = 0;
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
-          if (c.estado !== 'pagado' && c.estado !== 'bono' && c.estado !== 'maquillaje' && c.servicio_id !== 2 && c.servicio_id !== 5) {
+          if (c.estado !== 'pagado' && c.estado !== 'bono' && c.estado !== 'maquillaje' && c.estado !== 'personal' && c.servicio_id !== 2 && c.servicio_id !== 5) {
             const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
             pendienteCitasPeriodo += (precioPersonalizado !== null ? Number(precioPersonalizado) : 35);
           }
@@ -1258,7 +1390,7 @@
       let telefClientesPeriodo = new Set();
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
-          if (c.cliente_telefono) telefClientesPeriodo.add(c.cliente_telefono.trim());
+          if (c.cliente_telefono && c.cliente_telefono !== 'PERSONAL') telefClientesPeriodo.add(c.cliente_telefono.trim());
         });
       }
 
@@ -1750,6 +1882,8 @@
     let servicioTxt = 'Quiromasaje (35€)';
     if (cita.estado === 'maquillaje') {
       servicioTxt = `Maquillaje / Peinado (${precioPersonalizado !== null ? precioPersonalizado : 0}€)`;
+    } else if (cita.estado === 'personal') {
+      servicioTxt = 'Compromiso Personal';
     } else if (cita.servicio_id === 2 || cita.servicio_id === 5) {
       servicioTxt = 'Sesión de Bono';
     } else if (precioPersonalizado !== null) {
