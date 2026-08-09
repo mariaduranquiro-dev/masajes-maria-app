@@ -102,6 +102,7 @@
       font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; 
       background: #FFF; 
       -webkit-appearance: none; 
+      font-variant-numeric: normal;
     }
     input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
 
@@ -193,7 +194,7 @@
       <input type="hidden" id="hora" required value="">
       
       <div id="error-fin-de-semana" class="error-msg">
-        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <span style="font-family: 'Georgia', serif; font-weight: normal;">664 636 559</span>.
+        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <span style="font-family: Arial, Helvetica, sans-serif; font-variant-numeric: normal; font-weight: normal;">664 636 559</span>.
       </div>
 
       <!-- 3. TUS DATOS DE CONTACTO -->
@@ -568,7 +569,6 @@
         }
 
         const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
-        // Mapear servicio_id correctamente (ID 2 para bonos, ID 1 para masajes normales)
         const targetServicioId = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 2 : 1;
 
         const { error } = await supabase.from('citas').insert([{
