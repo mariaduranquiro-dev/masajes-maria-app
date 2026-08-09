@@ -248,7 +248,7 @@
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
       <div class="quick-action-item" onclick="abrirModalRecordatorios48h()">
-        <span>💬 Recordatorios 48h (Próximos)</span>
+        <span>💬 Recordatorio Citas</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
       <div class="quick-action-item" onclick="abrirModalGestorBonos()">
@@ -597,14 +597,17 @@
 
   <!-- MODAL RECORDATORIOS -->
   <div class="modal" id="modal-recordatorios">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 440px;">
       <div class="modal-header">
-        <span>💬 Recordatorios Próximos (48h)</span>
+        <span>💬 Recordatorio Citas</span>
         <button class="btn" onclick="cerrarModalRecordatorios48h()" style="background:#ECE7DF;">✕</button>
       </div>
-      <p style="font-size:12px; font-family:sans-serif; color:#666; margin-bottom:15px;">Clientes con cita en los próximos 2 días:</p>
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: bold; color: #0B1E36; text-transform: uppercase; display: block; margin-bottom: 4px;">Seleccionar Fecha:</label>
+        <input type="date" id="filtro-fecha-recordatorios" onchange="cargarRecordatoriosPorFecha()" style="margin: 0; padding: 8px; font-size: 13px;">
+      </div>
       <div id="lista-recordatorios-48h" style="max-height: 280px; overflow-y: auto;"></div>
-      <button class="btn" style="width:100%; padding:10px; margin-top:10px; background:#ECE7DF; color:#333;" onclick="cerrarModalRecordatorios48h()">Cerrar</button>
+      <button class="btn" style="width:100%; padding:10px; margin-top:12px; background:#ECE7DF; color:#333;" onclick="cerrarModalRecordatorios48h()">Cerrar</button>
     </div>
   </div>
 
@@ -1438,7 +1441,6 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       
-      // Obtener el teléfono del bono antes de borrarlo para borrar sus citas asociadas
       const { data: bonoRec } = await supabase.from('bonos').select('cliente_telefono').eq('id', bonoIdAEliminar).single();
 
       if (bonoRec && bonoRec.cliente_telefono) {
@@ -1495,16 +1497,35 @@
     }
   }
 
-  // RECORDATORIOS 48H
+  // RECORDATORIOS DE CITAS
   async function abrirModalRecordatorios48h() {
-    const container = document.getElementById('lista-recordatorios-48h');
-    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
+    const inputFecha = document.getElementById('filtro-fecha-recordatorios');
+    if (!inputFecha.value) {
+      inputFecha.value = formatDate(new Date());
+    }
     document.getElementById('modal-recordatorios').style.display = 'flex';
-    const hoy = new Date(); const en48h = new Date(hoy); en48h.setDate(hoy.getDate() + 2);
+    cargarRecordatoriosPorFecha();
+  }
+
+  async function cargarRecordatoriosPorFecha() {
+    const fechaSeleccionada = document.getElementById('filtro-fecha-recordatorios').value;
+    const container = document.getElementById('lista-recordatorios-48h');
+    if (!fechaSeleccionada) {
+      container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:15px;">Selecciona una fecha.</div>';
+      return;
+    }
+    container.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:10px;">Buscando...</div>';
+    
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: citas } = await supabase.from('citas').select('*').gte('fecha', formatDate(hoy)).lte('fecha', formatDate(en48h)).order('fecha', { ascending: true });
-      if (!citas || citas.length === 0) { container.innerHTML = '<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas próximos 2 días.</div>'; return; }
+      // Consulta directa a la tabla citas por la fecha seleccionada (esto soluciona automáticamente cualquier cambio de fecha hecho en el calendario)
+      const { data: citas } = await supabase.from('citas').select('*').eq('fecha', fechaSeleccionada).order('hora', { ascending: true });
+      
+      if (!citas || citas.length === 0) {
+        container.innerHTML = `<div style="font-size:12px; color:#888; text-align:center; padding:15px;">No hay citas registradas para el día ${formatearFechaEspanol(fechaSeleccionada)}.</div>`;
+        return;
+      }
+      
       let html = '';
       citas.forEach(cita => {
         const fechaEsp = formatearFechaEspanol(cita.fecha);
@@ -1524,7 +1545,9 @@
         `;
       });
       container.innerHTML = html;
-    } catch (err) { container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`; }
+    } catch (err) {
+      container.innerHTML = `<div style="color:red; font-size:12px;">Error: ${err.message}</div>`;
+    }
   }
 
   async function enviarRecordatorio(btnEl, url, citaId) {
