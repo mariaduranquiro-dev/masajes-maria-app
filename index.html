@@ -181,7 +181,7 @@
       <input type="hidden" id="hora" required value="">
       
       <div id="error-fin-de-semana" class="error-msg">
-        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María.
+        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <strong>664 636 559</strong>.
       </div>
 
       <!-- 3. TUS DATOS DE CONTACTO -->
@@ -191,7 +191,7 @@
       <input type="text" id="nombre" required placeholder="Ej. Laura Gómez Ruiz">
 
       <label>Teléfono WhatsApp *</label>
-      <input type="tel" id="telefono" required placeholder="Ej. 612 345 678" oninput="comprobarBonosCliente(this.value)">
+      <input type="tel" id="telefono" required placeholder="Ej. 612 345 678" oninput="comprobarDatosCliente(this.value)">
 
       <label>¿Alguna dolencia o nota?</label>
       <textarea id="nota" rows="2" placeholder="Ej. Sobrecarga en la zona lumbar"></textarea>
@@ -305,7 +305,7 @@
       document.getElementById('servicio_id').value = id;
     }
 
-    async function comprobarBonosCliente(tel) {
+    async function comprobarDatosCliente(tel) {
       const telefonoLimpio = tel.trim();
       if (telefonoLimpio.length < 9 || telefonoLimpio === ultimoTelefonoVerificado) {
         return;
@@ -313,24 +313,47 @@
       
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 1. Comprobar bonos activos
         const { data: bonos } = await supabase
           .from('bonos')
           .select('*')
           .eq('cliente_telefono', telefonoLimpio)
           .gt('sesiones_restantes', 0);
 
+        // 2. Comprobar citas normales/pendientes activas
+        const hoyStr = new Date().toISOString().split('T')[0];
+        const { data: citas } = await supabase
+          .from('citas')
+          .select('*')
+          .eq('cliente_telefono', telefonoLimpio)
+          .gte('fecha', hoyStr);
+
+        let mensajeAviso = "";
+        let tituloAviso = "";
+        let iconoAviso = "ℹ️";
+
         if (bonos && bonos.length > 0) {
           ultimoTelefonoVerificado = telefonoLimpio;
           let totalRestantes = bonos.reduce((acc, b) => acc + b.sesiones_restantes, 0);
-          mostrarAlertaWeb(
-            "¡Bono Activo Detectado!",
-            `¡Hola! Vemos que tienes un bono activo con ${totalRestantes} sesiones disponibles. Te recomendamos seleccionar "Canjear Sesión de Bono Existente" en el paso 1.`,
-            "🎟",
-            false
-          );
+          tituloAviso = "¡Bono Activo Detectado!";
+          mensajeAviso = `¡Hola! Vemos que tienes un bono activo con ${totalRestantes} sesiones disponibles. Te recomendamos seleccionar "Canjear Sesión de Bono Existente" en el paso 1.`;
+          iconoAviso = "🎟";
+        } else if (citas && citas.length > 0) {
+          ultimoTelefonoVerificado = telefonoLimpio;
+          const proximaCita = citas[0];
+          const fechaEsp = formatearFechaEspanol(proximaCita.fecha);
+          tituloAviso = "¡Cita Activa Encontrada!";
+          mensajeAviso = `¡Hola! Vemos que ya tienes una cita reservada para el ${fechaEsp} a las ${proximaCita.hora.substring(0,5)} h. Si necesitas consultarla o modificarla, puedes usar el botón de abajo "Gestionar / Anular Cita".`;
+          iconoAviso = "📅";
         }
+
+        if (mensajeAviso) {
+          mostrarAlertaWeb(tituloAviso, mensajeAviso, iconoAviso, false);
+        }
+
       } catch (err) {
-        console.error("Error al comprobar bonos:", err);
+        console.error("Error al comprobar datos del cliente:", err);
       }
     }
 
