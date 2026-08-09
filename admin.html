@@ -68,6 +68,7 @@
     .chip-bono { background-color: #F3E8FD; color: #681DA8; border-left-color: #9333EA; }
     .chip-bono-pagado { background-color: #E0F2FE; color: #0369A1; border-left-color: #0284C7; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
+    .chip-maquillaje { background-color: #FCE7F3; color: #9D174D; border-left-color: #EC4899; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; cursor: pointer; }
     .chip-bloqueo:hover { filter: brightness(0.95); }
 
@@ -235,6 +236,7 @@
       <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
       <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
       <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #EC4899;"></span> Maquillaje / Peinado</span>
       <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
     </div>
   </div>
@@ -245,6 +247,10 @@
     <div class="actions-grid">
       <div class="quick-action-item" onclick="abrirModalCitaManual()">
         <span>✚ Añadir Cita Manual</span>
+        <span style="font-size:12px; color:#B89047;">▶</span>
+      </div>
+      <div class="quick-action-item" onclick="abrirModalMaquillaje()">
+        <span>💄 Maquillaje / Peinado</span>
         <span style="font-size:12px; color:#B89047;">▶</span>
       </div>
       <div class="quick-action-item" onclick="abrirModalRecordatorios48h()">
@@ -297,6 +303,48 @@
         <input type="password" id="pin-input" placeholder="Introduce el PIN" required style="text-align: center; font-size: 18px; letter-spacing: 6px;">
         <div id="login-error" style="color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 10px; display: none;">PIN incorrecto. Inténtalo de nuevo.</div>
         <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px; font-size: 13px;">Desbloquear Panel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MAQUILLAJE / PEINADO -->
+  <div class="modal" id="modal-maquillaje">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <span>💄 Nueva Cita de Maquillaje / Peinado</span>
+        <button class="btn" onclick="cerrarModalMaquillaje()" style="background:#ECE7DF;">✕</button>
+      </div>
+      <form id="form-maquillaje" onsubmit="guardarCitaMaquillaje(event)">
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Nombre de la clienta *</label>
+        <input type="text" id="mk_nombre" required placeholder="Ej. Ana Pérez">
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Teléfono WhatsApp *</label>
+        <input type="tel" id="mk_telefono" required placeholder="Ej. 612345678">
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Fecha *</label>
+        <input type="date" id="mk_fecha" required>
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Hora *</label>
+        <select id="mk_hora" required>
+          <option value="09:00">09:00 h</option>
+          <option value="10:00">10:00 h</option>
+          <option value="11:00">11:00 h</option>
+          <option value="12:00">12:00 h</option>
+          <option value="13:00">13:00 h</option>
+          <option value="17:00">17:00 h</option>
+          <option value="18:00">18:00 h</option>
+          <option value="19:00">19:00 h</option>
+          <option value="20:00">20:00 h</option>
+        </select>
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Precio (€) *</label>
+        <input type="number" id="mk_precio" step="0.01" min="0" required placeholder="Ej. 45">
+
+        <label style="font-size:11px; font-weight:bold; color:#0B1E36;">Notas adicionales</label>
+        <textarea id="mk_nota" rows="2" placeholder="Ej. Peinado de invitada y maquillaje"></textarea>
+
+        <button type="submit" class="btn btn-gold" style="width:100%; padding:12px; margin-top:5px; font-size:13px;">Guardar Cita Maquillaje</button>
+        <button type="button" class="btn" style="width:100%; padding:8px; margin-top:5px; background:#ECE7DF; color:#333;" onclick="cerrarModalMaquillaje()">Cancelar</button>
       </form>
     </div>
   </div>
@@ -861,6 +909,68 @@
     }
   }
 
+  // ACCIÓN RÁPIDA: MAQUILLAJE / PEINADO
+  function abrirModalMaquillaje() {
+    document.getElementById('form-maquillaje').reset();
+    document.getElementById('mk_fecha').value = formatDate(new Date());
+    document.getElementById('modal-maquillaje').style.display = 'flex';
+  }
+
+  function cerrarModalMaquillaje() {
+    document.getElementById('modal-maquillaje').style.display = 'none';
+  }
+
+  async function guardarCitaMaquillaje(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('mk_nombre').value.trim();
+    const telefono = document.getElementById('mk_telefono').value.trim();
+    const fecha = document.getElementById('mk_fecha').value;
+    const hora = document.getElementById('mk_hora').value;
+    const precio = parseFloat(document.getElementById('mk_precio').value);
+    const notaInput = document.getElementById('mk_nota').value.trim();
+
+    if (!nombre || !telefono || !fecha || !hora || isNaN(precio)) {
+      alert("Por favor, completa todos los campos obligatorios y el precio.");
+      return;
+    }
+
+    try {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      // Comprobar si el hueco está ocupado
+      const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', fecha).eq('hora', hora);
+      if (ocupadas && ocupadas.length > 0) {
+        alert("⚠️ Este horario ya está ocupado en el calendario. Por favor, selecciona otra hora.");
+        return;
+      }
+
+      const notaFinal = guardarNotaConPrecio(notaInput, precio);
+
+      const { error } = await supabase.from('citas').insert([{
+        cliente_nombre: nombre,
+        cliente_telefono: telefono,
+        fecha: fecha,
+        hora: hora,
+        servicio_id: 1, // Satisfacer clave foránea
+        estado: 'maquillaje',
+        nota: notaFinal
+      }]);
+
+      if (error) throw error;
+
+      await supabase.from('avisos_admin').insert([{
+        tipo: 'nueva',
+        mensaje: `Nueva cita de Maquillaje/Peinado para ${nombre} (${precio}€) el ${formatearFechaEspanol(fecha)} a las ${hora} h.`
+      }]);
+
+      cerrarModalMaquillaje();
+      cargarAgendaSemanal();
+      alert("¡Cita de Maquillaje / Peinado añadida con éxito!");
+    } catch (err) {
+      alert("Error al guardar la cita: " + err.message);
+    }
+  }
+
   // CALENDARIO DE 6 DÍAS (LUNES A SÁBADO) SIEMPRE EXPANDIDO
   async function cargarAgendaSemanal() {
     const lunes = getMonday(fechaReferencia);
@@ -959,6 +1069,9 @@
 
             if (citaEnSlot.estado === 'pagado') {
               chipClass = 'chip-pagado';
+            } else if (citaEnSlot.estado === 'maquillaje') {
+              chipClass = 'chip-maquillaje';
+              estadoEtiqueta = 'MAQUILLAJE';
             } else if (esBonoPagado100) {
               chipClass = 'chip-bono-pagado';
               estadoEtiqueta = 'BONO PAGADO';
@@ -968,7 +1081,12 @@
             }
 
             const precioPersonalizado = extraerPrecioPersonalizado(citaEnSlot.nota);
-            const precioTexto = (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) ? 'Bono' : (precioPersonalizado !== null ? `${precioPersonalizado}€` : '35€');
+            let precioTexto = '35€';
+            if (citaEnSlot.estado === 'maquillaje' || precioPersonalizado !== null) {
+              precioTexto = `${precioPersonalizado !== null ? precioPersonalizado : 0}€`;
+            } else if (citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) {
+              precioTexto = 'Bono';
+            }
             
             colHtml += `
               <div class="chip ${chipClass}" onclick='abrirModalGestion(${JSON.stringify(citaEnSlot)})'>
@@ -1037,11 +1155,11 @@
 
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
-          if (c.estado === 'pagado') {
+          if (c.estado === 'pagado' || c.estado === 'maquillaje') {
             const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
             if (precioPersonalizado !== null) {
               ingresosPeriodo += Number(precioPersonalizado);
-            } else {
+            } else if (c.estado === 'pagado') {
               ingresosPeriodo += 35;
             }
           }
@@ -1057,9 +1175,9 @@
       let ingresosHistoricos = 0;
       if (todasCitas) {
         todasCitas.forEach(c => {
-          if (c.estado === 'pagado') {
+          if (c.estado === 'pagado' || c.estado === 'maquillaje') {
             const pPers = extraerPrecioPersonalizado(c.nota);
-            ingresosHistoricos += (pPers !== null ? Number(pPers) : 35);
+            ingresosHistoricos += (pPers !== null ? Number(pPers) : (c.estado === 'pagado' ? 35 : 0));
           }
         });
       }
@@ -1068,11 +1186,11 @@
       }
       const sesionesHistoricas = todasCitas ? todasCitas.length : 0;
 
-      // Pendiente Citas del periodo (EXCLUYENDO bonos)
+      // Pendiente Citas del periodo (EXCLUYENDO bonos y maquillaje)
       let pendienteCitasPeriodo = 0;
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
-          if (c.estado !== 'pagado' && c.estado !== 'bono' && c.servicio_id !== 2 && c.servicio_id !== 5) {
+          if (c.estado !== 'pagado' && c.estado !== 'bono' && c.estado !== 'maquillaje' && c.servicio_id !== 2 && c.servicio_id !== 5) {
             const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
             pendienteCitasPeriodo += (precioPersonalizado !== null ? Number(precioPersonalizado) : 35);
           }
@@ -1518,7 +1636,6 @@
     
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      // Consulta directa a la tabla citas por la fecha seleccionada (esto soluciona automáticamente cualquier cambio de fecha hecho en el calendario)
       const { data: citas } = await supabase.from('citas').select('*').eq('fecha', fechaSeleccionada).order('hora', { ascending: true });
       
       if (!citas || citas.length === 0) {
@@ -1573,7 +1690,15 @@
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     
     const precioPersonalizado = extraerPrecioPersonalizado(cita.nota);
-    const servicioTxt = (cita.servicio_id === 2 || cita.servicio_id === 5) ? 'Sesión de Bono' : (precioPersonalizado !== null ? `Especial (${precioPersonalizado}€)` : 'Quiromasaje (35€)');
+    let servicioTxt = 'Quiromasaje (35€)';
+    if (cita.estado === 'maquillaje') {
+      servicioTxt = `Maquillaje / Peinado (${precioPersonalizado !== null ? precioPersonalizado : 0}€)`;
+    } else if (cita.servicio_id === 2 || cita.servicio_id === 5) {
+      servicioTxt = 'Sesión de Bono';
+    } else if (precioPersonalizado !== null) {
+      servicioTxt = `Especial (${precioPersonalizado}€)`;
+    }
+
     const fechaEspCita = formatearFechaEspanol(cita.fecha);
 
     bonoIdActualCita = null;
