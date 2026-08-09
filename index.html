@@ -100,7 +100,7 @@
     .footer-links a { color: #0B1E36; text-decoration: none; font-weight: bold; }
     .footer-links a:hover { color: #B89047; }
 
-    .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 8px; display: none; line-height: 1.4; }
+    .error-msg { color: #DC2626; font-size: 11px; font-family: sans-serif; margin-bottom: 12px; display: none; line-height: 1.4; background: #FFF5F5; border: 1px solid #FEB2B2; padding: 10px; border-radius: 8px; }
 
     /* MODAL INTERNO DE LA WEB */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 30, 54, 0.7); backdrop-filter: blur(3px); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
@@ -180,7 +180,9 @@
       </div>
       <input type="hidden" id="hora" required value="">
       
-      <div id="error-fin-de-semana" class="error-msg">🔴 La clínica permanece cerrada los fines de semana (Sábados y Domingos).</div>
+      <div id="error-fin-de-semana" class="error-msg">
+        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María.
+      </div>
 
       <!-- 3. TUS DATOS DE CONTACTO -->
       <div class="section-title">3. Tus Datos de Contacto</div>
