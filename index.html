@@ -181,7 +181,7 @@
       <input type="hidden" id="hora" required value="">
       
       <div id="error-fin-de-semana" class="error-msg">
-        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <strong>664 636 559</strong>.
+        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <span style="font-family: sans-serif; font-weight: normal;">664 636 559</span>.
       </div>
 
       <!-- 3. TUS DATOS DE CONTACTO -->
@@ -556,7 +556,8 @@
         }
 
         const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
-        const targetServicioId = (servicioId === '2') ? 2 : (servicioId === '5' ? 5 : (servicioId === '3' ? 2 : 1));
+        // Mapear servicio_id correctamente para evitar errores de clave foránea en la tabla citas
+        const targetServicioId = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 2 : 1;
 
         const { error } = await supabase.from('citas').insert([{
           cliente_nombre: nombre,
