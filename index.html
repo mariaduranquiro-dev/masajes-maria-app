@@ -90,7 +90,19 @@
     }
 
     label { font-size: 11px; font-weight: bold; color: #0B1E36; display: block; margin-bottom: 4px; font-family: sans-serif; }
-    input, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #D1C7B7; border-radius: 8px; font-size: 13px; font-family: sans-serif; background: #FFF; }
+    
+    /* INPUTS UNIFICADOS PARA MÓVIL Y WEB */
+    input, textarea { 
+      width: 100%; 
+      padding: 10px; 
+      margin-bottom: 12px; 
+      border: 1px solid #D1C7B7; 
+      border-radius: 8px; 
+      font-size: 13px; 
+      font-family: 'Georgia', 'Helvetica Neue', Arial, sans-serif; 
+      background: #FFF; 
+      -webkit-appearance: none; 
+    }
     input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
 
     .btn-confirm { background-color: #B89047; color: #FFFFFF; border: none; width: 100%; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; }
@@ -181,7 +193,7 @@
       <input type="hidden" id="hora" required value="">
       
       <div id="error-fin-de-semana" class="error-msg">
-        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <span style="font-family: sans-serif; font-weight: normal;">664 636 559</span>.
+        🔴 <strong>La clínica permanece cerrada los fines de semana (Sábados y Domingos).</strong><br>Si necesitas una sesión de urgencia, por favor ponte en contacto directamente con María en el teléfono <span style="font-family: 'Georgia', serif; font-weight: normal;">664 636 559</span>.
       </div>
 
       <!-- 3. TUS DATOS DE CONTACTO -->
@@ -556,7 +568,7 @@
         }
 
         const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
-        // Mapear servicio_id correctamente para evitar errores de clave foránea en la tabla citas
+        // Mapear servicio_id correctamente (ID 2 para bonos, ID 1 para masajes normales)
         const targetServicioId = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 2 : 1;
 
         const { error } = await supabase.from('citas').insert([{
