@@ -142,6 +142,14 @@
         <div class="service-price">90 €</div>
       </div>
 
+      <div class="service-card" id="card-servicio-5" onclick="seleccionarServicio(5, 140)">
+        <div class="service-info">
+          <div class="service-name">Comprar Nuevo Bono (5 Sesiones)</div>
+          <div class="service-desc">5 Sesiones (28€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
+        </div>
+        <div class="service-price">140 €</div>
+      </div>
+
       <div class="service-card" id="card-servicio-3" onclick="seleccionarServicio(3, 0)">
         <div class="service-info">
           <div class="service-name">Canjear Sesión de Bono Existente</div>
@@ -495,6 +503,15 @@
             precio_total: 90,
             monto_pagado: 0
           }]);
+        } else if (servicioId === '5') {
+          await supabase.from('bonos').insert([{
+            cliente_nombre: nombre,
+            cliente_telefono: telefono,
+            sesiones_totales: 5,
+            sesiones_restantes: 4,
+            precio_total: 140,
+            monto_pagado: 0
+          }]);
         } else if (servicioId === '3') {
           const { data: bonosActivos } = await supabase
             .from('bonos')
@@ -513,8 +530,8 @@
           await supabase.from('bonos').update({ sesiones_restantes: bono.sesiones_restantes - 1 }).eq('id', bono.id);
         }
 
-        const estadoCita = (servicioId === '2' || servicioId === '3') ? 'bono' : 'pendiente';
-        const targetServicioId = (servicioId === '2') ? 2 : (servicioId === '3' ? 2 : 1);
+        const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
+        const targetServicioId = (servicioId === '2') ? 2 : (servicioId === '5' ? 5 : (servicioId === '3' ? 2 : 1));
 
         const { error } = await supabase.from('citas').insert([{
           cliente_nombre: nombre,
@@ -609,7 +626,6 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Si la cita anulada era de bono, restaurar sesión o eliminar bono si estaba intacto
         const { data: citaTarget } = await supabase.from('citas').select('*').eq('id', idCita).single();
         if (citaTarget && (citaTarget.estado === 'bono' || citaTarget.servicio_id === 2 || citaTarget.servicio_id === 5)) {
           const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaTarget.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
