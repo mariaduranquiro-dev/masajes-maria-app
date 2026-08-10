@@ -395,6 +395,9 @@
           });
         }
 
+        const ahora = new Date();
+        const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
+
         let encontrados = 0;
         let html = '';
         let d = new Date(hoy);
@@ -409,6 +412,15 @@
           if (diaSem !== 0 && diaSem !== 6 && !diasBloqueados[fStr]) {
             for (const hStr of HORARIOS_SLOTS) {
               const key = `${fStr}_${hStr}`;
+              
+              // Si es hoy, descartar horas pasadas en los slots rápidos
+              if (fStr === hoyStr) {
+                const [hH, hM] = hStr.split(':').map(Number);
+                if (hH * 60 + hM <= minutosActuales) {
+                  continue;
+                }
+              }
+
               if (!ocupadasMap[key] && !horasBloqueadas[key]) {
                 const nombreDia = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
                 html += `<div class="slot-pill" onclick="seleccionarSlotRapido('${fStr}', '${hStr}')">${nombreDia}, ${hStr}h</div>`;
@@ -475,8 +487,23 @@
           return;
         }
 
+        const ahora = new Date();
+        const anioHoy = ahora.getFullYear();
+        const mesHoy = String(ahora.getMonth() + 1).padStart(2, '0');
+        const diaHoy = String(ahora.getDate()).padStart(2, '0');
+        const hoyStr = `${anioHoy}-${mesHoy}-${diaHoy}`;
+        const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
+
         let html = '';
         HORARIOS_SLOTS.forEach(h => {
+          // Si es el día de hoy, ocultar horas que ya han pasado
+          if (fechaVal === hoyStr) {
+            const [hH, hM] = h.split(':').map(Number);
+            if (hH * 60 + hM <= minutosActuales) {
+              return; // No mostrar las horas pasadas
+            }
+          }
+
           if (horasOcupadas.has(h)) {
             html += `<div class="hour-box disabled">${h} 🔒</div>`;
           } else {
@@ -484,7 +511,7 @@
           }
         });
 
-        contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres este día.</div>';
+        contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres disponibles para el resto de este día.</div>';
 
       } catch (err) {
         console.error(err);
