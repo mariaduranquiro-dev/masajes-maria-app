@@ -334,7 +334,7 @@
           .eq('cliente_telefono', telefonoLimpio)
           .gt('sesiones_restantes', 0);
 
-        // 2. Comprobar citas normales/pendientes activas
+        // 2. Comprobar citas normales/pendientes activas (solo futuras o de hoy)
         const hoyStr = new Date().toISOString().split('T')[0];
         const { data: citas } = await supabase
           .from('citas')
@@ -413,7 +413,6 @@
             for (const hStr of HORARIOS_SLOTS) {
               const key = `${fStr}_${hStr}`;
               
-              // Si es hoy, descartar horas pasadas en los slots rápidos
               if (fStr === hoyStr) {
                 const [hH, hM] = hStr.split(':').map(Number);
                 if (hH * 60 + hM <= minutosActuales) {
@@ -496,11 +495,10 @@
 
         let html = '';
         HORARIOS_SLOTS.forEach(h => {
-          // Si es el día de hoy, ocultar horas que ya han pasado
           if (fechaVal === hoyStr) {
             const [hH, hM] = h.split(':').map(Number);
             if (hH * 60 + hM <= minutosActuales) {
-              return; // No mostrar las horas pasadas
+              return;
             }
           }
 
@@ -659,10 +657,18 @@
       container.innerHTML = '<span style="font-size:11px; color:#666;">Buscando citas...</span>';
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: citas } = await supabase.from('citas').select('*').eq('cliente_telefono', tel).order('fecha', { ascending: true });
+        
+        // FILTRO ESTRICTO: Solo mostrar citas con fecha igual o posterior al día de hoy
+        const hoyStr = new Date().toISOString().split('T')[0];
+        const { data: citas } = await supabase
+          .from('citas')
+          .select('*')
+          .eq('cliente_telefono', tel)
+          .gte('fecha', hoyStr)
+          .order('fecha', { ascending: true });
         
         if (!citas || citas.length === 0) {
-          container.innerHTML = '<span style="font-size:11px; color:#888;">No se han encontrado citas para este teléfono.</span>';
+          container.innerHTML = '<span style="font-size:11px; color:#888;">No se han encontrado citas futuras o pendientes para este teléfono.</span>';
           return;
         }
 
