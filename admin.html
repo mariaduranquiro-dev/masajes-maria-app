@@ -2015,18 +2015,39 @@
       if (bonosActivos && bonosActivos.length > 0) {
         const b = bonosActivos[0];
         const precioTotal = b.precio_total || (b.sesiones_totales === 5 ? 140 : 90);
+        const pagadoActual = b.monto_pagado !== undefined ? b.monto_pagado : 0;
+        const pendiente = precioTotal - pagadoActual;
+
         await supabase.from('bonos').update({ monto_pagado: precioTotal }).eq('id', b.id);
+
+        if (pendiente > 0) {
+          await supabase.from('pagos_bonos').insert([{
+            bono_id: b.id,
+            cliente_nombre: citaSeleccionada.cliente_nombre,
+            monto: pendiente,
+            fecha_pago: new Date().toISOString().split('T')[0]
+          }]);
+        }
       } else {
         const sesionesTotales = 3;
         const precioTotal = 90;
-        await supabase.from('bonos').insert([{
+        const { data: nuevoBono } = await supabase.from('bonos').insert([{
           cliente_nombre: citaSeleccionada.cliente_nombre,
           cliente_telefono: citaSeleccionada.cliente_telefono,
           sesiones_totales: sesionesTotales,
           sesiones_restantes: sesionesTotales - 1,
           precio_total: precioTotal,
           monto_pagado: precioTotal
-        }]);
+        }]).select().single();
+
+        if (nuevoBono) {
+          await supabase.from('pagos_bonos').insert([{
+            bono_id: nuevoBono.id,
+            cliente_nombre: citaSeleccionada.cliente_nombre,
+            monto: precioTotal,
+            fecha_pago: new Date().toISOString().split('T')[0]
+          }]);
+        }
       }
 
       cerrarModalGestion();
