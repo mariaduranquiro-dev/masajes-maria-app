@@ -616,8 +616,8 @@
       <div style="font-size:11px; font-weight:bold; color:#0B1E36; text-transform:uppercase; font-family:sans-serif;">Cambiar Estado de la Cita:</div>
       <div class="status-btn-group">
         <button class="btn-status-opt" style="background:#E6F4EA; color:#137333;" onclick="setEstado('pagado')"><span>✓ Marcar como PAGADO (Efectivo/Bizum)</span></button>
-        <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstadoBono(3)"><span>🎟 Marcar como Bono de 3 Sesiones</span></button>
-        <button class="btn-status-opt" style="background:#E9D5FF; color:#581C87;" onclick="setEstadoBono(5)"><span>🎟 Marcar como Bono de 5 Sesiones</span></button>
+        <button class="btn-status-opt" style="background:#F3E8FD; color:#681DA8;" onclick="setEstadoBono(3)"><span>🎟 Cambiar a Bono de 3 Sesiones</span></button>
+        <button class="btn-status-opt" style="background:#E9D5FF; color:#581C87;" onclick="setEstadoBono(5)"><span>🎟 Cambiar a Bono de 5 Sesiones</span></button>
         <button class="btn-status-opt" style="background:#E0F2FE; color:#0369A1;" onclick="setEstadoBonoPagado()"><span>🎟 Marcar como Bono Pagado</span></button>
         <button class="btn-status-opt" style="background:#FEF3C7; color:#92400E;" onclick="setEstado('pendiente')"><span>⏳ Marcar como PENDIENTE</span></button>
       </div>
@@ -1988,12 +1988,32 @@
     try {
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const servicioIdNuevo = (numSesiones === 5) ? 5 : 2;
+      
+      // Actualizar la cita actual con el nuevo servicio_id (2 para 3 sesiones, 5 para 5 sesiones)
       await supabase.from('citas').update({ estado: 'bono', servicio_id: servicioIdNuevo }).eq('id', citaSeleccionada.id);
+
+      // Si el cliente tiene un registro de bono asociado, actualizar también las sesiones totales a 3 o 5
+      const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
+      if (bonos && bonos.length > 0) {
+        const b = bonos[0];
+        const precioNuevo = (numSesiones === 5) ? 140 : 90;
+        const diferenciaSesiones = numSesiones - b.sesiones_totales;
+        let nuevasRestantes = b.sesiones_restantes + diferenciaSesiones;
+        if (nuevasRestantes < 0) nuevasRestantes = 0;
+        if (nuevasRestantes > numSesiones) nuevasRestantes = numSesiones;
+
+        await supabase.from('bonos').update({
+          sesiones_totales: numSesiones,
+          sesiones_restantes: nuevasRestantes,
+          precio_total: precioNuevo
+        }).eq('id', b.id);
+      }
       
       cerrarModalGestion();
       cargarAgendaSemanal();
+      mostrarExitoAdmin("¡Bono Actualizado!", `El bono se ha cambiado correctamente a ${numSesiones} sesiones.`);
     } catch (err) {
-      alert("Error al marcar como bono: " + err.message);
+      alert("Error al cambiar tipo de bono: " + err.message);
     }
   }
 
@@ -2029,8 +2049,8 @@
           }]);
         }
       } else {
-        const sesionesTotales = 3;
-        const precioTotal = 90;
+        const sesionesTotales = (targetServicioId === 5) ? 5 : 3;
+        const precioTotal = (targetServicioId === 5) ? 140 : 90;
         const { data: nuevoBono } = await supabase.from('bonos').insert([{
           cliente_nombre: citaSeleccionada.cliente_nombre,
           cliente_telefono: citaSeleccionada.cliente_telefono,
