@@ -658,7 +658,6 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // FILTRO ESTRICTO: Solo mostrar citas con fecha igual o posterior al día de hoy
         const hoyStr = new Date().toISOString().split('T')[0];
         const { data: citas } = await supabase
           .from('citas')
@@ -734,16 +733,29 @@
     async function ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora) {
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Obtener datos antiguos para el mensaje detallado de aviso al admin
+        const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', idCita).single();
+
         const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', idCita);
         if (ocupadas && ocupadas.length > 0) {
           alert("⚠️ Este horario ya está ocupado. Elige otro por favor.");
           return;
         }
+
         await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', idCita);
+
+        const nombreCli = citaAntigua ? citaAntigua.cliente_nombre : 'Un cliente';
+        const fechaAntEsp = formatearFechaEspanol(citaAntigua ? citaAntigua.fecha : '');
+        const horaAnt = citaAntigua ? citaAntigua.hora.substring(0,5) : '';
+        const fechaNuevaEsp = formatearFechaEspanol(nuevaFecha);
+        const horaNueva = nuevaHora.substring(0,5);
+
         await supabase.from('avisos_admin').insert([{
           tipo: 'modificacion',
-          mensaje: `Un cliente ha modificado su cita al ${formatearFechaEspanol(nuevaFecha)} a las ${nuevaHora} h desde la web.`
+          mensaje: `${nombreCli} ha modificado su cita: del ${fechaAntEsp} a las ${horaAnt} h al ${fechaNuevaEsp} a las ${horaNueva} h.`
         }]);
+
         alert("¡Cita modificada con éxito!");
         cerrarModalAlertaWeb();
         cargarProximasCitasDisponibles();
