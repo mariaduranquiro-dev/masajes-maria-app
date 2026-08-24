@@ -1836,7 +1836,7 @@
       let html = '';
       citas.forEach(cita => {
         const fechaEsp = formatearFechaEspanol(cita.fecha);
-        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+        const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. Por favor, confírmanos tu asistencia respondiendo a este mensaje. ¡Muchas gracias!`);
         const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
 
         const yaEnviado = cita.recordatorio_enviado === true;
@@ -1916,7 +1916,7 @@
     const notaLimpia = limpiarNotaSinPrecio(cita.nota);
     document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}${infoBonoExtra}<br>${notaLimpia ? `📝 <b>Nota:</b> "${notaLimpia}"` : ''}`;
     
-    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. ¡Te esperamos!`);
+    const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. Por favor, confírmanos tu asistencia respondiendo a este mensaje. ¡Muchas gracias!`);
     document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
@@ -1989,10 +1989,8 @@
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const servicioIdNuevo = (numSesiones === 5) ? 5 : 2;
       
-      // Actualizar la cita actual con el nuevo servicio_id (2 para 3 sesiones, 5 para 5 sesiones)
       await supabase.from('citas').update({ estado: 'bono', servicio_id: servicioIdNuevo }).eq('id', citaSeleccionada.id);
 
-      // Si el cliente tiene un registro de bono asociado, actualizar también las sesiones totales a 3 o 5
       const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaSeleccionada.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
       if (bonos && bonos.length > 0) {
         const b = bonos[0];
