@@ -511,6 +511,13 @@
 
         contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres disponibles para el resto de este día.</div>';
 
+        // Si viene preseleccionada una hora desde el panel de admin, seleccionarla automáticamente
+        const urlParams = new URLSearchParams(window.location.search);
+        const horaParam = urlParams.get('hora');
+        if (horaParam && document.getElementById(`hour-box-${horaParam}`)) {
+          seleccionarHoraBoton(horaParam);
+        }
+
       } catch (err) {
         console.error(err);
       }
@@ -627,6 +634,13 @@
         document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
         document.getElementById('contenedor-horas-grid').innerHTML = '<div style="grid-column: span 4; font-size: 11px; color: #7A8B9E; text-align: center; padding: 10px;">Selecciona primero una fecha...</div>';
         
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+          // Si está en el iframe de admin, cerrar o recargar
+          setTimeout(() => { window.parent.cerrarModalCitaManual(); }, 2000);
+          return;
+        }
+
         const hoyInit = new Date();
         document.getElementById('fecha').value = `${hoyInit.getFullYear()}-${String(hoyInit.getMonth() + 1).padStart(2, '0')}-${String(hoyInit.getDate()).padStart(2, '0')}`;
         validarDiaLaboral();
@@ -733,29 +747,16 @@
     async function ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora) {
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        // Obtener datos antiguos para el mensaje detallado de aviso al admin
-        const { data: citaAntigua } = await supabase.from('citas').select('*').eq('id', idCita).single();
-
         const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', idCita);
         if (ocupadas && ocupadas.length > 0) {
           alert("⚠️ Este horario ya está ocupado. Elige otro por favor.");
           return;
         }
-
         await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', idCita);
-
-        const nombreCli = citaAntigua ? citaAntigua.cliente_nombre : 'Un cliente';
-        const fechaAntEsp = formatearFechaEspanol(citaAntigua ? citaAntigua.fecha : '');
-        const horaAnt = citaAntigua ? citaAntigua.hora.substring(0,5) : '';
-        const fechaNuevaEsp = formatearFechaEspanol(nuevaFecha);
-        const horaNueva = nuevaHora.substring(0,5);
-
         await supabase.from('avisos_admin').insert([{
           tipo: 'modificacion',
-          mensaje: `${nombreCli} ha modificado su cita: del ${fechaAntEsp} a las ${horaAnt} h al ${fechaNuevaEsp} a las ${horaNueva} h.`
+          mensaje: `Un cliente ha modificado su cita al ${formatearFechaEspanol(nuevaFecha)} a las ${nuevaHora} h desde la web.`
         }]);
-
         alert("¡Cita modificada con éxito!");
         cerrarModalAlertaWeb();
         cargarProximasCitasDisponibles();
@@ -799,13 +800,16 @@
     }
 
     window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fechaParam = urlParams.get('fecha');
+      
       const hoyInit = new Date();
       const yInit = hoyInit.getFullYear();
       const mInit = String(hoyInit.getMonth() + 1).padStart(2, '0');
       const dInit = String(hoyInit.getDate()).padStart(2, '0');
       const fechaHoyStr = `${yInit}-${mInit}-${dInit}`;
       
-      document.getElementById('fecha').value = fechaHoyStr;
+      document.getElementById('fecha').value = fechaParam || fechaHoyStr;
       validarDiaLaboral();
       cargarProximasCitasDisponibles();
     };
