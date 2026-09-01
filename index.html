@@ -233,12 +233,8 @@
         <button type="button" class="btn-gold" style="background:#0B1E36; color:#FFF; border:none; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="ejecutarConsultaBonosWeb()">Consultar Bonos</button>
       </div>
 
-      <!-- Input y contenedor dinámico para gestión de citas del cliente -->
-      <div id="modal-gestion-citas-box" style="display: none; margin-bottom: 12px;">
-        <input type="tel" id="input-telefono-gestion" placeholder="Introduce tu teléfono..." style="margin-bottom: 8px; text-align: center;">
-        <button type="button" style="background:#0B1E36; color:#FFF; border:none; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom: 10px;" onclick="buscarCitasClienteWeb()">Buscar Mis Citas</button>
-        <div id="lista-citas-cliente-encontradas" style="max-height: 220px; overflow-y: auto; text-align: left;"></div>
-      </div>
+      <!-- Input y contenedor dinámico para gestión de citas del cliente (BLOQUEADO) -->
+      <div id="modal-gestion-citas-box" style="display: none; margin-bottom: 12px;"></div>
 
       <!-- Botones para calendario -->
       <div id="modal-botones-calendario" style="display: none; margin-bottom: 12px;">
@@ -256,7 +252,7 @@
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
     let ultimoTelefonoVerificado = "";
 
-    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false, mostrarGestionCitas = false) {
+    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
       document.getElementById('modal-alerta-texto').innerText = texto;
       document.getElementById('modal-alerta-icono').innerText = icono;
@@ -266,16 +262,9 @@
       const calBox = document.getElementById('modal-botones-calendario');
 
       telBox.style.display = mostrarInputTel ? 'block' : 'none';
-      gestBox.style.display = mostrarGestionCitas ? 'block' : 'none';
+      gestBox.style.display = 'none'; // Siempre oculto para evitar gestión autónoma
 
       if (mostrarInputTel) document.getElementById('input-telefono-consulta').value = document.getElementById('telefono').value || '';
-      if (mostrarGestionCitas) {
-        document.getElementById('input-telefono-gestion').value = document.getElementById('telefono').value || '';
-        document.getElementById('lista-citas-cliente-encontradas').innerHTML = '';
-        if (document.getElementById('telefono').value.trim().length >= 6) {
-          buscarCitasClienteWeb();
-        }
-      }
 
       if (mostrarCalendarios) {
         calBox.style.display = 'block';
@@ -334,14 +323,6 @@
           .eq('cliente_telefono', telefonoLimpio)
           .gt('sesiones_restantes', 0);
 
-        // 2. Comprobar citas normales/pendientes activas (solo futuras o de hoy)
-        const hoyStr = new Date().toISOString().split('T')[0];
-        const { data: citas } = await supabase
-          .from('citas')
-          .select('*')
-          .eq('cliente_telefono', telefonoLimpio)
-          .gte('fecha', hoyStr);
-
         let mensajeAviso = "";
         let tituloAviso = "";
         let iconoAviso = "ℹ️";
@@ -352,13 +333,6 @@
           tituloAviso = "¡Bono Activo Detectado!";
           mensajeAviso = `¡Hola! Vemos que tienes un bono activo con ${totalRestantes} sesiones disponibles. Te recomendamos seleccionar "Canjear Sesión de Bono Existente" en el paso 1.`;
           iconoAviso = "🎟";
-        } else if (citas && citas.length > 0) {
-          ultimoTelefonoVerificado = telefonoLimpio;
-          const proximaCita = citas[0];
-          const fechaEsp = formatearFechaEspanol(proximaCita.fecha);
-          tituloAviso = "¡Cita Activa Encontrada!";
-          mensajeAviso = `¡Hola! Vemos que ya tienes una cita reservada para el ${fechaEsp} a las ${proximaCita.hora.substring(0,5)} h. Si necesitas consultarla o modificarla, puedes usar el botón de abajo "Gestionar / Anular Cita".`;
-          iconoAviso = "📅";
         }
 
         if (mensajeAviso) {
@@ -511,7 +485,6 @@
 
         contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres disponibles para el resto de este día.</div>';
 
-        // Si viene preseleccionada una hora desde el panel de admin, seleccionarla automáticamente
         const urlParams = new URLSearchParams(window.location.search);
         const horaParam = urlParams.get('hora');
         if (horaParam && document.getElementById(`hour-box-${horaParam}`)) {
@@ -636,7 +609,6 @@
         
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('admin') === 'true') {
-          // Si está en el iframe de admin, cerrar o recargar
           setTimeout(() => { window.parent.cerrarModalCitaManual(); }, 2000);
           return;
         }
@@ -658,111 +630,12 @@
     }
 
     function abrirModalGestionCitas() {
-      mostrarAlertaWeb("Gestionar / Anular Cita", "Introduce tu número de teléfono para buscar tus citas activas:", "📅", false, "", "", "", false, true);
-    }
-
-    async function buscarCitasClienteWeb() {
-      const tel = document.getElementById('input-telefono-gestion').value.trim();
-      const container = document.getElementById('lista-citas-cliente-encontradas');
-      if (!tel) {
-        container.innerHTML = '<span style="font-size:11px; color:red;">Introduce un teléfono válido.</span>';
-        return;
-      }
-      container.innerHTML = '<span style="font-size:11px; color:#666;">Buscando citas...</span>';
-      try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        const hoyStr = new Date().toISOString().split('T')[0];
-        const { data: citas } = await supabase
-          .from('citas')
-          .select('*')
-          .eq('cliente_telefono', tel)
-          .gte('fecha', hoyStr)
-          .order('fecha', { ascending: true });
-        
-        if (!citas || citas.length === 0) {
-          container.innerHTML = '<span style="font-size:11px; color:#888;">No se han encontrado citas futuras o pendientes para este teléfono.</span>';
-          return;
-        }
-
-        let html = '';
-        citas.forEach(c => {
-          const fechaEsp = formatearFechaEspanol(c.fecha);
-          html += `
-            <div style="background:#FFFDF9; border:1px solid #E2DBCF; border-radius:8px; padding:8px; margin-bottom:8px; font-size:11px;">
-              <b>${c.cliente_nombre}</b><br>
-              📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h<br>
-              <div style="display:flex; gap:6px; margin-top:6px;">
-                <button type="button" class="btn-danger" style="padding:4px 8px; font-size:10px; flex:1;" onclick="anularCitaClienteWeb(${c.id}, '${c.cliente_nombre}', '${c.fecha}', '${c.hora}', '${c.estado || ''}', ${c.servicio_id || 1})">🗑 Anular</button>
-                <button type="button" class="btn-gold" style="padding:4px 8px; font-size:10px; flex:1;" onclick="pedirModificarCitaWeb(${c.id}, '${c.fecha}', '${c.hora.substring(0,5)}')">✏️ Modificar</button>
-              </div>
-            </div>
-          `;
-        });
-        container.innerHTML = html;
-      } catch (err) {
-        container.innerHTML = '<span style="font-size:11px; color:red;">Error al buscar.</span>';
-      }
-    }
-
-    async function anularCitaClienteWeb(idCita, nombreCli, fechaCita, horaCita, estadoCita, servicioIdCita) {
-      if (!confirm(`¿Estás seguro de anular tu cita del ${formatearFechaEspanol(fechaCita)} a las ${horaCita.substring(0,5)} h?`)) return;
-      try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        const { data: citaTarget } = await supabase.from('citas').select('*').eq('id', idCita).single();
-        if (citaTarget && (citaTarget.estado === 'bono' || citaTarget.servicio_id === 2 || citaTarget.servicio_id === 5)) {
-          const { data: bonos } = await supabase.from('bonos').select('*').eq('cliente_telefono', citaTarget.cliente_telefono.trim()).order('id', { ascending: false }).limit(1);
-          if (bonos && bonos.length > 0) {
-            const bono = bonos[0];
-            const nuevasRestantes = bono.sesiones_restantes + 1;
-            if (nuevasRestantes >= bono.sesiones_totales) {
-              await supabase.from('bonos').delete().eq('id', bono.id);
-            } else {
-              await supabase.from('bonos').update({ sesiones_restantes: nuevasRestantes }).eq('id', bono.id);
-            }
-          }
-        }
-
-        await supabase.from('citas').delete().eq('id', idCita);
-        await supabase.from('avisos_admin').insert([{
-          tipo: 'cancelacion',
-          mensaje: `El cliente ${nombreCli} ha anulado su cita del ${formatearFechaEspanol(fechaCita)} a las ${horaCita.substring(0,5)} h desde la web.`
-        }]);
-        alert("Cita anulada correctamente.");
-        cerrarModalAlertaWeb();
-        cargarProximasCitasDisponibles();
-      } catch (err) {
-        alert("Error al anular: " + err.message);
-      }
-    }
-
-    function pedirModificarCitaWeb(idCita, fechaAntigua, horaAntigua) {
-      const nuevaFecha = prompt("Introduce la nueva fecha (AAAA-MM-DD):", fechaAntigua);
-      const nuevaHora = prompt("Introduce la nueva hora (HH:MM):", horaAntigua);
-      if (!nuevaFecha || !nuevaHora) return;
-      ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora);
-    }
-
-    async function ejecutarModificacionCitaWeb(idCita, nuevaFecha, nuevaHora) {
-      try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: ocupadas } = await supabase.from('citas').select('id').eq('fecha', nuevaFecha).eq('hora', nuevaHora).neq('id', idCita);
-        if (ocupadas && ocupadas.length > 0) {
-          alert("⚠️ Este horario ya está ocupado. Elige otro por favor.");
-          return;
-        }
-        await supabase.from('citas').update({ fecha: nuevaFecha, hora: nuevaHora }).eq('id', idCita);
-        await supabase.from('avisos_admin').insert([{
-          tipo: 'modificacion',
-          mensaje: `Un cliente ha modificado su cita al ${formatearFechaEspanol(nuevaFecha)} a las ${nuevaHora} h desde la web.`
-        }]);
-        alert("¡Cita modificada con éxito!");
-        cerrarModalAlertaWeb();
-        cargarProximasCitasDisponibles();
-      } catch (err) {
-        alert("Error al modificar: " + err.message);
-      }
+      mostrarAlertaWeb(
+        "Gestionar / Anular Cita", 
+        "Para cualquier modificación o anulación de citas, por favor ponte en contacto directamente con María en el teléfono 664 636 559.", 
+        "📞", 
+        false
+      );
     }
 
     function abrirModalConsultaBonos() {
