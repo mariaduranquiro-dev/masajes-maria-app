@@ -262,7 +262,7 @@
       const calBox = document.getElementById('modal-botones-calendario');
 
       telBox.style.display = mostrarInputTel ? 'block' : 'none';
-      gestBox.style.display = 'none'; // Siempre oculto para evitar gestión autónoma
+      gestBox.style.display = 'none';
 
       if (mostrarInputTel) document.getElementById('input-telefono-consulta').value = document.getElementById('telefono').value || '';
 
@@ -316,7 +316,6 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // 1. Comprobar bonos activos
         const { data: bonos } = await supabase
           .from('bonos')
           .select('*')
@@ -485,6 +484,7 @@
 
         contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres disponibles para el resto de este día.</div>';
 
+        // Preselección automática si viene de admin.html
         const urlParams = new URLSearchParams(window.location.search);
         const horaParam = urlParams.get('hora');
         if (horaParam && document.getElementById(`hour-box-${horaParam}`)) {
@@ -623,12 +623,6 @@
       }
     }
 
-    function formatearFechaEspanol(fechaStr) {
-      if (!fechaStr) return '';
-      const p = fechaStr.split('-');
-      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
-    }
-
     function abrirModalGestionCitas() {
       mostrarAlertaWeb(
         "Gestionar / Anular Cita", 
@@ -672,9 +666,55 @@
       }
     }
 
+    // CARGAR CLIENTES EN ADMIN PARA AUTOCOMPLETADO MÁGICO
+    async function cargarListaClientesFrecuentes() {
+       try {
+           const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+           const { data: citas } = await supabase.from('citas').select('cliente_nombre, cliente_telefono').order('id', {ascending: false}).limit(500);
+           if(citas) {
+               const unicos = {};
+               citas.forEach(c => {
+                   if(c.cliente_nombre && c.cliente_telefono && !unicos[c.cliente_nombre.trim()]) {
+                       unicos[c.cliente_nombre.trim()] = c.cliente_telefono.trim();
+                   }
+               });
+               
+               let dl = document.createElement('datalist');
+               dl.id = 'lista-clientes-admin';
+               for (const [nombre, tel] of Object.entries(unicos)) {
+                   let opt = document.createElement('option');
+                   opt.value = nombre;
+                   opt.setAttribute('data-tel', tel);
+                   dl.appendChild(opt);
+               }
+               document.body.appendChild(dl);
+               
+               const inputNombre = document.getElementById('nombre');
+               inputNombre.setAttribute('list', 'lista-clientes-admin');
+               inputNombre.autocomplete = "off";
+               
+               inputNombre.addEventListener('input', function() {
+                   const val = this.value;
+                   const options = dl.options;
+                   for(let i=0; i<options.length; i++) {
+                       if(options[i].value === val) {
+                           const tel = options[i].getAttribute('data-tel');
+                           document.getElementById('telefono').value = tel;
+                           comprobarDatosCliente(tel);
+                           break;
+                       }
+                   }
+               });
+           }
+       } catch(e) { console.error(e); }
+    }
+
     window.onload = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const fechaParam = urlParams.get('fecha');
+      const nombreParam = urlParams.get('nombre');
+      const telParam = urlParams.get('tel');
+      const isAdmin = urlParams.get('admin') === 'true';
       
       const hoyInit = new Date();
       const yInit = hoyInit.getFullYear();
@@ -683,6 +723,17 @@
       const fechaHoyStr = `${yInit}-${mInit}-${dInit}`;
       
       document.getElementById('fecha').value = fechaParam || fechaHoyStr;
+      
+      if (nombreParam) document.getElementById('nombre').value = nombreParam;
+      if (telParam) {
+          document.getElementById('telefono').value = telParam;
+          comprobarDatosCliente(telParam);
+      }
+
+      if (isAdmin) {
+          cargarListaClientesFrecuentes();
+      }
+
       validarDiaLaboral();
       cargarProximasCitasDisponibles();
     };
