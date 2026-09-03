@@ -423,7 +423,8 @@
       <div style="font-size: 12px; color: #666; font-family: sans-serif; margin-bottom: 20px;" id="slot-accion-sub"></div>
       
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button class="btn btn-gold" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionAnadirCita()">✚ Añadir Cita en este Hueco</button>
+        <div id="btn-reagendar-container"></div>
+        <button class="btn btn-gold" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionAnadirCita()">✚ Añadir Cita Nueva</button>
         <button class="btn btn-danger" style="padding: 12px; font-size: 13px;" onclick="ejecutarAccionBloquearHora()">🚫 Bloquear esta Hora</button>
         <button class="btn" style="padding: 10px; background: #ECE7DF; color: #333;" onclick="cerrarModalAccionSlot()">Cancelar</button>
       </div>
@@ -707,6 +708,7 @@
   let slotSeleccionadoAdmin = null;
   let chartInstanciaEconomica = null;
   let filtroEstadoBonoActual = 'todos';
+  let clienteEnMemoria = null;
   
   let bonoIdActualCita = null;
   let bonoPrecioTotalActual = 0;
@@ -1475,12 +1477,28 @@
     const fechaEsp = formatearFechaEspanol(fecha);
     document.getElementById('slot-accion-titulo').innerText = `Hueco: ${hora}`;
     document.getElementById('slot-accion-sub').innerText = `Día ${fechaEsp}. ¿Qué deseas hacer?`;
+    
+    // MOSTRAR BOTÓN DE MEMORIA SI EXISTE UN CLIENTE RECIENTE
+    const containerReagendar = document.getElementById('btn-reagendar-container');
+    if (clienteEnMemoria) {
+      containerReagendar.innerHTML = `<button class="btn" style="background:#1e8e3e; color:#FFF; padding: 12px; font-size: 13px; width:100%; margin-bottom:10px;" onclick="ejecutarAccionReagendar()">👤 Reservar para ${clienteEnMemoria.nombre}</button>`;
+    } else {
+      containerReagendar.innerHTML = '';
+    }
+
     document.getElementById('modal-accion-slot').style.display = 'flex';
   }
 
   function cerrarModalAccionSlot() {
     document.getElementById('modal-accion-slot').style.display = 'none';
     slotSeleccionadoAdmin = null;
+  }
+
+  function ejecutarAccionReagendar() {
+    if (!slotSeleccionadoAdmin || !clienteEnMemoria) return;
+    const { fecha, hora } = slotSeleccionadoAdmin;
+    cerrarModalAccionSlot();
+    abrirModalCitaManual(fecha, hora, clienteEnMemoria.nombre, clienteEnMemoria.telefono);
   }
 
   function ejecutarAccionAnadirCita() {
@@ -1538,10 +1556,13 @@
     cargarAgendaSemanal();
   }
 
-  function abrirModalCitaManual(fechaPrefill = '', horaPrefill = '') { 
+  function abrirModalCitaManual(fechaPrefill = '', horaPrefill = '', nombrePrefill = '', telPrefill = '') { 
     let url = "index.html?admin=true";
     if (fechaPrefill && horaPrefill) {
       url += `&fecha=${fechaPrefill}&hora=${horaPrefill}`;
+    }
+    if (nombrePrefill && telPrefill) {
+      url += `&nombre=${encodeURIComponent(nombrePrefill)}&tel=${encodeURIComponent(telPrefill)}`;
     }
     document.getElementById('iframe-cita-manual').src = url;
     document.getElementById('modal-cita-manual').style.display = 'flex'; 
@@ -1877,6 +1898,10 @@
   // VENTANA DE GESTIÓN DE CITA
   async function abrirModalGestion(cita) {
     citaSeleccionada = cita;
+    
+    // MEMORIZAR AL ÚLTIMO CLIENTE AL ABRIR SU CITA
+    clienteEnMemoria = { nombre: cita.cliente_nombre, telefono: cita.cliente_telefono };
+
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     
     const precioPersonalizado = extraerPrecioPersonalizado(cita.nota);
