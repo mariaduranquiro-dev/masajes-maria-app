@@ -106,6 +106,12 @@
     }
     input:focus, textarea:focus { outline: none; border-color: #0B1E36; }
 
+    /* AUTOCOMPLETADO PERSONALIZADO (IOS COMPATIBLE) */
+    .autocomplete-wrapper { position: relative; width: 100%; }
+    .autocomplete-items { position: absolute; border: 1px solid #D1C7B7; border-bottom: none; border-top: none; z-index: 99; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background-color: #fff; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: -12px; }
+    .autocomplete-items div { padding: 12px; cursor: pointer; border-bottom: 1px solid #D1C7B7; font-size: 13px; color: #0B1E36; font-family: sans-serif; }
+    .autocomplete-items div:hover { background-color: #F6F3ED; }
+
     .btn-confirm { background-color: #B89047; color: #FFFFFF; border: none; width: 100%; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; margin-top: 6px; }
     .btn-confirm:hover { background-color: #9A773B; }
 
@@ -201,7 +207,10 @@
       <div class="section-title">3. Tus Datos de Contacto</div>
 
       <label>Nombre completo *</label>
-      <input type="text" id="nombre" required placeholder="Ej. Laura Gómez Ruiz">
+      <div class="autocomplete-wrapper">
+        <input type="text" id="nombre" required placeholder="Ej. Laura Gómez Ruiz" autocomplete="off">
+        <div id="lista-sugerencias" class="autocomplete-items"></div>
+      </div>
 
       <label>Teléfono WhatsApp *</label>
       <input type="tel" id="telefono" required placeholder="Ej. 612 345 678" oninput="comprobarDatosCliente(this.value)">
@@ -251,6 +260,7 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
     const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
     let ultimoTelefonoVerificado = "";
+    let clientesMemoria = [];
 
     function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
@@ -484,7 +494,6 @@
 
         contenedorGrid.innerHTML = html || '<div style="grid-column: span 4; font-size: 11px; color: #DC2626; text-align: center; padding: 10px;">No hay horas libres disponibles para el resto de este día.</div>';
 
-        // Preselección automática si viene de admin.html
         const urlParams = new URLSearchParams(window.location.search);
         const horaParam = urlParams.get('hora');
         if (horaParam && document.getElementById(`hour-box-${horaParam}`)) {
@@ -666,7 +675,7 @@
       }
     }
 
-    // CARGAR CLIENTES EN ADMIN PARA AUTOCOMPLETADO MÁGICO
+    // CARGAR CLIENTES EN ADMIN PARA AUTOCOMPLETADO MÁGICO (COMPATIBLE CON IOS/IPAD)
     async function cargarListaClientesFrecuentes() {
        try {
            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -674,35 +683,43 @@
            if(citas) {
                const unicos = {};
                citas.forEach(c => {
-                   if(c.cliente_nombre && c.cliente_telefono && !unicos[c.cliente_nombre.trim()]) {
-                       unicos[c.cliente_nombre.trim()] = c.cliente_telefono.trim();
+                   if(c.cliente_nombre && c.cliente_telefono) {
+                       const nom = c.cliente_nombre.trim();
+                       if(!unicos[nom]) unicos[nom] = c.cliente_telefono.trim();
                    }
                });
                
-               let dl = document.createElement('datalist');
-               dl.id = 'lista-clientes-admin';
-               for (const [nombre, tel] of Object.entries(unicos)) {
-                   let opt = document.createElement('option');
-                   opt.value = nombre;
-                   opt.setAttribute('data-tel', tel);
-                   dl.appendChild(opt);
+               for (const [nom, tel] of Object.entries(unicos)) {
+                   clientesMemoria.push({ nombre: nom, telefono: tel });
                }
-               document.body.appendChild(dl);
-               
+
                const inputNombre = document.getElementById('nombre');
-               inputNombre.setAttribute('list', 'lista-clientes-admin');
-               inputNombre.autocomplete = "off";
+               const listaSug = document.getElementById('lista-sugerencias');
                
                inputNombre.addEventListener('input', function() {
-                   const val = this.value;
-                   const options = dl.options;
-                   for(let i=0; i<options.length; i++) {
-                       if(options[i].value === val) {
-                           const tel = options[i].getAttribute('data-tel');
-                           document.getElementById('telefono').value = tel;
-                           comprobarDatosCliente(tel);
-                           break;
-                       }
+                   const val = this.value.toLowerCase();
+                   listaSug.innerHTML = '';
+                   if (!val) return false;
+                   
+                   const filtrados = clientesMemoria.filter(c => c.nombre.toLowerCase().includes(val) || c.telefono.includes(val));
+                   
+                   filtrados.forEach(cliente => {
+                       let div = document.createElement('div');
+                       div.innerHTML = `<b>${cliente.nombre}</b> <span style="color:#7A8B9E; font-size:10px;">(${cliente.telefono})</span>`;
+                       div.addEventListener('click', function() {
+                           inputNombre.value = cliente.nombre;
+                           document.getElementById('telefono').value = cliente.telefono;
+                           comprobarDatosCliente(cliente.telefono);
+                           listaSug.innerHTML = '';
+                       });
+                       listaSug.appendChild(div);
+                   });
+               });
+
+               // Cerrar lista al hacer clic fuera del input
+               document.addEventListener('click', function (e) {
+                   if (e.target !== inputNombre) {
+                       listaSug.innerHTML = '';
                    }
                });
            }
