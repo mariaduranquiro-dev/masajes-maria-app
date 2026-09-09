@@ -272,7 +272,7 @@
       const calBox = document.getElementById('modal-botones-calendario');
 
       telBox.style.display = mostrarInputTel ? 'block' : 'none';
-      gestBox.style.display = 'none';
+      gestBox.style.display = 'none'; // Siempre oculto para evitar gestión autónoma
 
       if (mostrarInputTel) document.getElementById('input-telefono-consulta').value = document.getElementById('telefono').value || '';
 
@@ -326,6 +326,7 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
+        // 1. Comprobar bonos activos
         const { data: bonos } = await supabase
           .from('bonos')
           .select('*')
@@ -518,6 +519,12 @@
       }
     }
 
+    function formatearFechaEspanol(fechaStr) {
+      if (!fechaStr) return '';
+      const p = fechaStr.split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
+    }
+
     async function enviarReserva(e) {
       e.preventDefault();
       const servicioId = document.getElementById('servicio_id').value;
@@ -618,6 +625,7 @@
         
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('admin') === 'true') {
+          // Si está en el iframe de admin, cerrar o recargar
           setTimeout(() => { window.parent.cerrarModalCitaManual(); }, 2000);
           return;
         }
