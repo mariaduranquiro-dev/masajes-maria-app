@@ -282,9 +282,13 @@
         <select id="blk_hora" style="margin:0; padding:6px; font-size:12px;">
           <option value="ALL">Día Completo</option>
           <option value="09:00">09:00 h</option>
+          <option value="09:30">09:30 h</option>
           <option value="10:00">10:00 h</option>
+          <option value="10:30">10:30 h</option>
           <option value="11:00">11:00 h</option>
+          <option value="11:30">11:30 h</option>
           <option value="12:00">12:00 h</option>
+          <option value="12:30">12:30 h</option>
           <option value="13:00">13:00 h</option>
           <option value="16:00">16:00 h</option>
           <option value="17:00">17:00 h</option>
@@ -698,7 +702,6 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
   const PIN_ACCESO = "1616";
 
-  const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
   let fechaReferencia = new Date();
   let citaSeleccionada = null;
   let bloqueoSeleccionado = null;
@@ -714,6 +717,24 @@
   let bonoPrecioTotalActual = 0;
   let bonoPagadoActual = 0;
   let cacheBonosGlobal = [];
+
+  // FUNCIÓN INTELIGENTE DE HORARIOS: Cambia automáticamente a partir de Octubre
+  function obtenerHorarios(fechaStr) {
+    if (!fechaStr) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    
+    const partes = fechaStr.split('-');
+    if (partes.length !== 3) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    
+    const anio = parseInt(partes[0], 10);
+    const mes = parseInt(partes[1], 10);
+
+    // Si el año es posterior a 2026 O si es 2026 y el mes es Octubre (10) o posterior
+    if (anio > 2026 || (anio === 2026 && mes >= 10)) {
+      return ['09:30', '10:30', '11:30', '12:30', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    } else {
+      return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    }
+  }
 
   function formatearFechaEspanol(fechaStr) {
     if (!fechaStr) return '';
@@ -985,7 +1006,8 @@
       }
 
       let html = '';
-      HORARIOS_SLOTS.forEach(h => {
+      const horariosDelDia = obtenerHorarios(fechaVal); // Lógica inteligente de Octubre
+      horariosDelDia.forEach(h => {
         if (horasOcupadas.has(h)) {
           html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
         } else {
@@ -1092,7 +1114,8 @@
       }
 
       let html = '';
-      HORARIOS_SLOTS.forEach(h => {
+      const horariosDelDia = obtenerHorarios(fechaVal); // Lógica inteligente de Octubre
+      horariosDelDia.forEach(h => {
         if (horasOcupadas.has(h)) {
           html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
         } else {
@@ -1216,7 +1239,8 @@
           continue;
         }
 
-        let horasDelDia = [...HORARIOS_SLOTS];
+        let horasDelDia = obtenerHorarios(fechaStr); // <--- Lógica inteligente de Octubre
+        
         if (citasSemana) {
           citasSemana.filter(c => c.fecha === fechaStr).forEach(c => {
             const hCita = c.hora.substring(0,5);
@@ -1288,7 +1312,7 @@
               </div>
             `;
           } else {
-            if (HORARIOS_SLOTS.includes(slotHora)) {
+            if (obtenerHorarios(fechaStr).includes(slotHora)) {
               colHtml += `
                 <div class="slot-empty" onclick="abrirModalAccionSlot('${fechaStr}', '${slotHora}')" title="Gestionar hueco libre">
                   <span class="chip-time">${slotHora}</span>
