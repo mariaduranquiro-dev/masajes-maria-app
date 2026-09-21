@@ -258,9 +258,26 @@
   <script>
     const SUPABASE_URL = "https://fuykfpyobiweyoihzsbx.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1eWtmcHlvYml3ZXlvaWh6c2J4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODM3NDcsImV4cCI6MjEwMTM1OTc0N30.UT4aMQU5wJf2rKZpbEXE5YG3qjV_il8OXBlcm5lKz2A";
-    const HORARIOS_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
     let ultimoTelefonoVerificado = "";
     let clientesMemoria = [];
+
+    // FUNCIÓN INTELIGENTE DE HORARIOS: Cambia automáticamente a partir de Octubre
+    function obtenerHorarios(fechaStr) {
+      if (!fechaStr) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+      
+      const partes = fechaStr.split('-');
+      if (partes.length !== 3) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+      
+      const anio = parseInt(partes[0], 10);
+      const mes = parseInt(partes[1], 10);
+
+      // Si el año es posterior a 2026 O si es 2026 y el mes es Octubre (10) o posterior
+      if (anio > 2026 || (anio === 2026 && mes >= 10)) {
+        return ['09:30', '10:30', '11:30', '12:30', '16:00', '17:00', '18:00', '19:00', '20:00'];
+      } else {
+        return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+      }
+    }
 
     function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
       document.getElementById('modal-alerta-titulo').innerText = titulo;
@@ -272,7 +289,7 @@
       const calBox = document.getElementById('modal-botones-calendario');
 
       telBox.style.display = mostrarInputTel ? 'block' : 'none';
-      gestBox.style.display = 'none'; // Siempre oculto para evitar gestión autónoma
+      gestBox.style.display = 'none';
 
       if (mostrarInputTel) document.getElementById('input-telefono-consulta').value = document.getElementById('telefono').value || '';
 
@@ -326,7 +343,6 @@
       try {
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // 1. Comprobar bonos activos
         const { data: bonos } = await supabase
           .from('bonos')
           .select('*')
@@ -394,7 +410,8 @@
           
           const diaSem = d.getDay();
           if (diaSem !== 0 && diaSem !== 6 && !diasBloqueados[fStr]) {
-            for (const hStr of HORARIOS_SLOTS) {
+            const horariosDelDia = obtenerHorarios(fStr); // <--- Lógica inteligente
+            for (const hStr of horariosDelDia) {
               const key = `${fStr}_${hStr}`;
               
               if (fStr === hoyStr) {
@@ -478,7 +495,9 @@
         const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
 
         let html = '';
-        HORARIOS_SLOTS.forEach(h => {
+        const horariosDelDia = obtenerHorarios(fechaVal); // <--- Lógica inteligente
+        
+        horariosDelDia.forEach(h => {
           if (fechaVal === hoyStr) {
             const [hH, hM] = h.split(':').map(Number);
             if (hH * 60 + hM <= minutosActuales) {
@@ -625,7 +644,6 @@
         
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('admin') === 'true') {
-          // Si está en el iframe de admin, cerrar o recargar
           setTimeout(() => { window.parent.cerrarModalCitaManual(); }, 2000);
           return;
         }
@@ -683,7 +701,6 @@
       }
     }
 
-    // CARGAR CLIENTES EN ADMIN PARA AUTOCOMPLETADO MÁGICO (COMPATIBLE CON IOS/IPAD)
     async function cargarListaClientesFrecuentes() {
        try {
            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -724,7 +741,6 @@
                    });
                });
 
-               // Cerrar lista al hacer clic fuera del input
                document.addEventListener('click', function (e) {
                    if (e.target !== inputNombre) {
                        listaSug.innerHTML = '';
