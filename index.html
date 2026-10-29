@@ -23,12 +23,15 @@
     .service-card { border: 1.5px solid #E2DBCF; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; background: #FFFDF9; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
     .service-card:hover { border-color: #B89047; }
     .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
-    .service-card.selected .service-price, .service-card.selected .service-desc { color: #F6F3ED; opacity: 0.9; }
+    .service-card.selected .service-price, .service-card.selected .service-desc, .service-card.selected .price-strike { color: #F6F3ED; opacity: 0.9; }
     
     .service-info { flex: 1; padding-right: 10px; }
     .service-name { font-size: 13px; font-weight: bold; }
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
-    .service-price { font-size: 14px; font-weight: bold; color: #B89047; white-space: nowrap; flex-shrink: 0; }
+    
+    .price-container { text-align: right; white-space: nowrap; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center;}
+    .service-price { font-size: 14px; font-weight: bold; color: #B89047; }
+    .price-strike { font-size: 10px; color: #9CA3AF; text-decoration: line-through; margin-bottom: 2px; }
 
     /* CONTENEDOR DORADO PARA PRÓXIMAS CITAS */
     .proximas-citas-box {
@@ -150,23 +153,31 @@
           <div class="service-name">Quiromasaje Descontracturante</div>
           <div class="service-desc">50 min • Alivio de tensiones en espalda, hombros y cuello.</div>
         </div>
-        <div class="service-price">35 €</div>
+        <div class="price-container">
+          <div class="service-price">35 €</div>
+        </div>
       </div>
 
       <div class="service-card" id="card-servicio-2" onclick="seleccionarServicio(2, 90)">
         <div class="service-info">
           <div class="service-name">Comprar Nuevo Bono (3 Sesiones)</div>
-          <div class="service-desc">3 Sesiones (30€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
+          <div class="service-desc" style="font-weight: bold; color: #B89047;">🎉 ¡Te ahorras 15 €!</div>
         </div>
-        <div class="service-price">90 €</div>
+        <div class="price-container">
+          <div class="price-strike">105 €</div>
+          <div class="service-price">90 €</div>
+        </div>
       </div>
 
       <div class="service-card" id="card-servicio-5" onclick="seleccionarServicio(5, 140)">
         <div class="service-info">
           <div class="service-name">Comprar Nuevo Bono (5 Sesiones)</div>
-          <div class="service-desc">5 Sesiones (28€/masaje) • Adquieres el bono y reservas tu 1ª cita ahora.</div>
+          <div class="service-desc" style="font-weight: bold; color: #B89047;">🎁 ¡1 Sesión GRATIS!</div>
         </div>
-        <div class="service-price">140 €</div>
+        <div class="price-container">
+          <div class="price-strike">175 €</div>
+          <div class="service-price">140 €</div>
+        </div>
       </div>
 
       <div class="service-card" id="card-servicio-3" onclick="seleccionarServicio(3, 0)">
@@ -174,7 +185,9 @@
           <div class="service-name">Canjear Sesión de Bono Existente</div>
           <div class="service-desc">50 min • Reserva exclusiva para clientes con bono activo.</div>
         </div>
-        <div class="service-price">BONO</div>
+        <div class="price-container">
+          <div class="service-price">BONO</div>
+        </div>
       </div>
 
       <input type="hidden" id="servicio_id" required value="">
@@ -277,6 +290,12 @@
       } else {
         return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
       }
+    }
+
+    function formatearFechaEspanol(fechaStr) {
+      if (!fechaStr) return '';
+      const p = fechaStr.split('-');
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
     }
 
     function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
@@ -410,7 +429,7 @@
           
           const diaSem = d.getDay();
           if (diaSem !== 0 && diaSem !== 6 && !diasBloqueados[fStr]) {
-            const horariosDelDia = obtenerHorarios(fStr); // <--- Lógica inteligente
+            const horariosDelDia = obtenerHorarios(fStr);
             for (const hStr of horariosDelDia) {
               const key = `${fStr}_${hStr}`;
               
@@ -495,7 +514,7 @@
         const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
 
         let html = '';
-        const horariosDelDia = obtenerHorarios(fechaVal); // <--- Lógica inteligente
+        const horariosDelDia = obtenerHorarios(fechaVal);
         
         horariosDelDia.forEach(h => {
           if (fechaVal === hoyStr) {
@@ -536,12 +555,6 @@
         box.classList.add('selected');
         document.getElementById('hora').value = horaStr;
       }
-    }
-
-    function formatearFechaEspanol(fechaStr) {
-      if (!fechaStr) return '';
-      const p = fechaStr.split('-');
-      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
     }
 
     async function enviarReserva(e) {
