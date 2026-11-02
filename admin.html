@@ -718,6 +718,16 @@
   let bonoPagadoActual = 0;
   let cacheBonosGlobal = [];
 
+  // FUNCION LIMPIADORA PARA WHATSAPP
+  function formatearTelefonoWS(tel) {
+    if (!tel) return '';
+    let num = tel.replace(/\D/g, ''); 
+    if (num.length === 9 && (num.startsWith('6') || num.startsWith('7'))) {
+      return '34' + num;
+    }
+    return num;
+  }
+
   // FUNCIÓN INTELIGENTE DE HORARIOS: Cambia automáticamente a partir de Octubre
   function obtenerHorarios(fechaStr) {
     if (!fechaStr) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
@@ -1882,7 +1892,7 @@
       citas.forEach(cita => {
         const fechaEsp = formatearFechaEspanol(cita.fecha);
         const msj = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEsp} a las ${cita.hora.substring(0,5)} h. Por favor, confírmanos tu asistencia respondiendo a este mensaje. ¡Muchas gracias!`);
-        const linkWs = `https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msj}`;
+        const linkWs = `https://wa.me/${formatearTelefonoWS(cita.cliente_telefono)}?text=${msj}`;
 
         const yaEnviado = cita.recordatorio_enviado === true;
 
@@ -1966,7 +1976,7 @@
     document.getElementById('g-detalles').innerHTML = `📅 <b>Fecha:</b> ${fechaEspCita}<br>⏰ <b>Hora:</b> ${cita.hora}<br>💆 <b>Tratamiento:</b> ${servicioTxt}<br>📞 <b>Teléfono:</b> ${cita.cliente_telefono}${infoBonoExtra}<br>${notaLimpia ? `📝 <b>Nota:</b> "${notaLimpia}"` : ''}`;
     
     const msjWhatsApp = encodeURIComponent(`Hola ${cita.cliente_nombre}, te escribo desde la clínica de María Durán para recordarte tu cita el día ${fechaEspCita} a las ${cita.hora.substring(0,5)} h. Por favor, confírmanos tu asistencia respondiendo a este mensaje. ¡Muchas gracias!`);
-    document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${cita.cliente_telefono.replace(/\s+/g, '')}?text=${msjWhatsApp}`, '_blank');
+    document.getElementById('btn-ws-modal').onclick = () => window.open(`https://wa.me/${formatearTelefonoWS(cita.cliente_telefono)}?text=${msjWhatsApp}`, '_blank');
     document.getElementById('modal-gestionar-cita').style.display = 'flex';
   }
 
