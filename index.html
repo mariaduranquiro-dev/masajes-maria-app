@@ -202,7 +202,7 @@
       <!-- 1. SELECCIONA EL SERVICIO -->
       <div class="section-title">1. Selecciona el Servicio</div>
 
-      <!-- TARJETA BLACK FRIDAY (ACTIVA DEL 21/11 00:00 AL 30/11 00:00 HORA PENINSULAR) -->
+      <!-- TARJETA BLACK FRIDAY (ACTIVA YA HASTA EL 30/11 00:00 HORA PENINSULAR) -->
       <div class="service-card service-card-bf" id="card-servicio-bf" onclick="seleccionarServicio('bf', 29)">
         <div class="service-info">
           <div class="bf-badge">BLACK FRIDAY • 15% DE DESCUENTO</div>
@@ -342,8 +342,8 @@
     let ultimoTelefonoVerificado = "";
     let clientesMemoria = [];
 
-    // CONTROL AUTOMÁTICO OFERTA BLACK FRIDAY (HORA PENINSULAR ESPAÑOLA CET = UTC+1)
-    const BF_INICIO = new Date('2026-11-21T00:00:00+01:00');
+    // CONTROL AUTOMÁTICO OFERTA BLACK FRIDAY (ACTIVA YA HASTA EL 30/11 00:00 HORA PENINSULAR)
+    const BF_INICIO = new Date('2026-11-20T00:00:00+01:00');
     const BF_FIN = new Date('2026-11-30T00:00:00+01:00');
 
     function esBlackFridayActivo() {
