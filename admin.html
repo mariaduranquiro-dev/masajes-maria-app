@@ -68,6 +68,7 @@
     .chip-bono { background-color: #F3E8FD; color: #681DA8; border-left-color: #9333EA; }
     .chip-bono-pagado { background-color: #E0F2FE; color: #0369A1; border-left-color: #0284C7; }
     .chip-pendiente { background-color: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
+    .chip-blackfriday { background-color: #6B0F1A; color: #FDF6EE; border-left-color: #B89047; }
     .chip-maquillaje { background-color: #E2E8F0; color: #1E293B; border-left-color: #475569; }
     .chip-personal { background-color: #F1F5F9; color: #334155; border-left-color: #64748B; }
     .chip-bloqueo { background-color: #FEE2E2; color: #991B1B; border-left-color: #DC2626; font-style: italic; cursor: pointer; }
@@ -212,7 +213,7 @@
       </div>
       <div class="nav-buttons">
         <button class="btn" onclick="cambiarSemana(-1)">◄ Sem. Ant.</button>
-        <button class="btn btn-active" id="label-mes">Agosto 2026</button>
+        <button class="btn btn-active" id="label-mes">Noviembre 2026</button>
         <button class="btn" onclick="cambiarSemana(1)">Sig. Sem. ►</button>
       </div>
     </div>
@@ -236,10 +237,11 @@
     </div>
 
     <div class="legend-box">
-      <strong>Leyenda de colores:</strong> &nbsp;<br>
+      <strong>Leyenda de colores:</strong>  <br>
       <span class="legend-item"><span class="legend-dot" style="background: #1e8e3e;"></span> Pagado / Efectivo / Bizum</span>
       <span class="legend-item"><span class="legend-dot" style="background: #9333EA;"></span> Sesión de Bono</span>
       <span class="legend-item"><span class="legend-dot" style="background: #0284C7;"></span> Bono Pagado</span>
+      <span class="legend-item"><span class="legend-dot" style="background: #6B0F1A; border: 1px solid #B89047;"></span> Black Friday (29€)</span>
       <span class="legend-item"><span class="legend-dot" style="background: #475569;"></span> Maquillaje / Peinado</span>
       <span class="legend-item"><span class="legend-dot" style="background: #64748B;"></span> Compromiso Personal</span>
       <span class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Reserva Pendiente</span>
@@ -738,7 +740,6 @@
     const anio = parseInt(partes[0], 10);
     const mes = parseInt(partes[1], 10);
 
-    // Si el año es posterior a 2026 O si es 2026 y el mes es Octubre (10) o posterior
     if (anio > 2026 || (anio === 2026 && mes >= 10)) {
       return ['09:30', '10:30', '11:30', '12:30', '16:00', '17:00', '18:00', '19:00', '20:00'];
     } else {
@@ -755,6 +756,11 @@
     return fechaStr;
   }
 
+  function esCitaBlackFriday(cita) {
+    if (!cita) return false;
+    return cita.estado === 'blackfriday' || (cita.nota && cita.nota.includes('[BLACKFRIDAY]'));
+  }
+
   function extraerPrecioPersonalizado(nota) {
     if (!nota) return null;
     const match = nota.match(/\[PRECIO:(\d+(?:\.\d+)?)\]/);
@@ -763,13 +769,17 @@
 
   function limpiarNotaSinPrecio(nota) {
     if (!nota) return '';
-    return nota.replace(/\[PRECIO:\d+(?:\.\d+)?\]\s*-?\s*/g, '').trim();
+    return nota
+      .replace(/\[PRECIO:\d+(?:\.\d+)?\]\s*-?\s*/g, '')
+      .replace(/\[BLACKFRIDAY\]\s*-?\s*/g, '')
+      .trim();
   }
 
   function guardarNotaConPrecio(notaActual, precioVal) {
+    const tieneBF = notaActual && notaActual.includes('[BLACKFRIDAY]');
     const textoLimpio = limpiarNotaSinPrecio(notaActual);
-    const tag = `[PRECIO:${precioVal}]`;
-    return textoLimpio ? `${tag} ${textoLimpio}` : tag;
+    const prefijo = tieneBF ? `[PRECIO:${precioVal}] [BLACKFRIDAY]` : `[PRECIO:${precioVal}]`;
+    return textoLimpio ? `${prefijo} ${textoLimpio}` : prefijo;
   }
 
   function verificarAccesoGuardado() {
@@ -965,7 +975,7 @@
               <span>📅 ${fechaEsp} • ⏰ ${c.hora.substring(0,5)} h (📞 ${c.cliente_telefono})</span><br>
               <span style="font-size:10px; color:#B89047; font-weight:bold;">Estado: ${estadoTxt}</span>
             </div>
-            <button class="btn btn-gold" style="padding:6px 10px; font-size:10px;" onclick="cerrarModalBuscadorCitas(); abrirModalGestion(${JSON.stringify(c).replace(/"/g, '&quot;')})">Gestionar</button>
+            <button class="btn btn-gold" style="padding:6px 10px; font-size:10px;" onclick="cerrarModalBuscadorCitas(); abrirModalGestion(${JSON.stringify(c).replace(/"/g, '"')})">Gestionar</button>
           </div>
         `;
       });
@@ -1016,7 +1026,7 @@
       }
 
       let html = '';
-      const horariosDelDia = obtenerHorarios(fechaVal); // Lógica inteligente de Octubre
+      const horariosDelDia = obtenerHorarios(fechaVal);
       horariosDelDia.forEach(h => {
         if (horasOcupadas.has(h)) {
           html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
@@ -1124,7 +1134,7 @@
       }
 
       let html = '';
-      const horariosDelDia = obtenerHorarios(fechaVal); // Lógica inteligente de Octubre
+      const horariosDelDia = obtenerHorarios(fechaVal);
       horariosDelDia.forEach(h => {
         if (horasOcupadas.has(h)) {
           html += `<option value="${h}" disabled style="color: #9CA3AF; background: #F3F4F6;">${h} h (Ocupada 🔒)</option>`;
@@ -1202,7 +1212,6 @@
       diaCurrent.setDate(lunes.getDate() + i);
       fechasSemana.push(formatDate(diaCurrent));
       const numDia = diaCurrent.getDate();
-      const isToday = formatDate(new Date()) === formatDate(diaCurrent);
       document.getElementById(`th-${i}`).innerText = `${diasNombres[i]} ${numDia}`;
     }
 
@@ -1249,7 +1258,7 @@
           continue;
         }
 
-        let horasDelDia = obtenerHorarios(fechaStr); // <--- Lógica inteligente de Octubre
+        let horasDelDia = obtenerHorarios(fechaStr);
         
         if (citasSemana) {
           citasSemana.filter(c => c.fecha === fechaStr).forEach(c => {
@@ -1285,11 +1294,16 @@
 
           if (citaEnSlot) {
             const esBonoPagado100 = (citaEnSlot.estado === 'bono' || citaEnSlot.servicio_id === 2 || citaEnSlot.servicio_id === 5) && bonosPagadosMap[citaEnSlot.cliente_telefono];
+            const esBF = esCitaBlackFriday(citaEnSlot);
             let chipClass = 'chip-pendiente';
             let estadoEtiqueta = citaEnSlot.estado ? citaEnSlot.estado.toUpperCase() : 'PENDIENTE';
 
             if (citaEnSlot.estado === 'pagado') {
               chipClass = 'chip-pagado';
+              estadoEtiqueta = esBF ? 'PAGADO • BF' : 'PAGADO';
+            } else if (citaEnSlot.estado === 'blackfriday') {
+              chipClass = 'chip-blackfriday';
+              estadoEtiqueta = 'BLACK FRIDAY';
             } else if (citaEnSlot.estado === 'maquillaje') {
               chipClass = 'chip-maquillaje';
               estadoEtiqueta = 'MAQUILLAJE';
@@ -1306,7 +1320,9 @@
 
             const precioPersonalizado = extraerPrecioPersonalizado(citaEnSlot.nota);
             let precioTexto = '35€';
-            if (citaEnSlot.estado === 'maquillaje' || precioPersonalizado !== null) {
+            if (citaEnSlot.estado === 'blackfriday' || esBF) {
+              precioTexto = `${precioPersonalizado !== null ? precioPersonalizado : 29}€`;
+            } else if (citaEnSlot.estado === 'maquillaje' || precioPersonalizado !== null) {
               precioTexto = `${precioPersonalizado !== null ? precioPersonalizado : 0}€`;
             } else if (citaEnSlot.estado === 'personal') {
               precioTexto = 'Libre';
@@ -1412,13 +1428,13 @@
       }
       const sesionesHistoricas = todasCitas ? todasCitas.filter(c => c.estado !== 'personal').length : 0;
 
-      // Pendiente Citas del periodo (EXCLUYENDO bonos, maquillaje y personal)
+      // Pendiente Citas del periodo (incluye pendientes y blackfriday aún sin pagar; excluye bonos, maquillaje y personal)
       let pendienteCitasPeriodo = 0;
       if (citasPeriodo) {
         citasPeriodo.forEach(c => {
           if (c.estado !== 'pagado' && c.estado !== 'bono' && c.estado !== 'maquillaje' && c.estado !== 'personal' && c.servicio_id !== 2 && c.servicio_id !== 5) {
             const precioPersonalizado = extraerPrecioPersonalizado(c.nota);
-            pendienteCitasPeriodo += (precioPersonalizado !== null ? Number(precioPersonalizado) : 35);
+            pendienteCitasPeriodo += (precioPersonalizado !== null ? Number(precioPersonalizado) : (c.estado === 'blackfriday' ? 29 : 35));
           }
         });
       }
@@ -1512,7 +1528,6 @@
     document.getElementById('slot-accion-titulo').innerText = `Hueco: ${hora}`;
     document.getElementById('slot-accion-sub').innerText = `Día ${fechaEsp}. ¿Qué deseas hacer?`;
     
-    // MOSTRAR BOTÓN DE MEMORIA SI EXISTE UN CLIENTE RECIENTE
     const containerReagendar = document.getElementById('btn-reagendar-container');
     if (clienteEnMemoria) {
       containerReagendar.innerHTML = `<button class="btn" style="background:#1e8e3e; color:#FFF; padding: 12px; font-size: 13px; width:100%; margin-bottom:10px;" onclick="ejecutarAccionReagendar()">👤 Reservar para ${clienteEnMemoria.nombre}</button>`;
@@ -1933,14 +1948,16 @@
   async function abrirModalGestion(cita) {
     citaSeleccionada = cita;
     
-    // MEMORIZAR AL ÚLTIMO CLIENTE AL ABRIR SU CITA
     clienteEnMemoria = { nombre: cita.cliente_nombre, telefono: cita.cliente_telefono };
 
     document.getElementById('g-cliente-nombre').innerText = cita.cliente_nombre;
     
     const precioPersonalizado = extraerPrecioPersonalizado(cita.nota);
+    const esBF = esCitaBlackFriday(cita);
     let servicioTxt = 'Quiromasaje (35€)';
-    if (cita.estado === 'maquillaje') {
+    if (esBF) {
+      servicioTxt = `Primera Sesión - Black Friday (${precioPersonalizado !== null ? precioPersonalizado : 29}€)`;
+    } else if (cita.estado === 'maquillaje') {
       servicioTxt = `Maquillaje / Peinado (${precioPersonalizado !== null ? precioPersonalizado : 0}€)`;
     } else if (cita.estado === 'personal') {
       servicioTxt = 'Compromiso Personal';
