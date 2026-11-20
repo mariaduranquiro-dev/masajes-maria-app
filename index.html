@@ -25,11 +25,65 @@
     .service-card.selected { border-color: #0B1E36; background-color: #0B1E36; color: #FFFFFF; }
     .service-card.selected .service-price, .service-card.selected .service-desc, .service-card.selected .price-strike { color: #F6F3ED; opacity: 0.9; }
     
+    /* TARJETA PROMOCIONAL BLACK FRIDAY */
+    .service-card-bf {
+      display: none;
+      background: linear-gradient(135deg, #6B0F1A 0%, #861624 100%);
+      border: 1.5px solid #B89047;
+      color: #FDF6EE;
+      box-shadow: 0 4px 12px rgba(107, 15, 26, 0.22);
+      position: relative;
+    }
+    .service-card-bf:hover {
+      border-color: #E5C178;
+      filter: brightness(1.04);
+    }
+    .service-card-bf.selected {
+      background: linear-gradient(135deg, #4A0810 0%, #6B0F1A 100%);
+      border: 2.5px solid #E5C178;
+      box-shadow: 0 0 0 2px rgba(184, 144, 71, 0.45);
+      color: #FFFFFF;
+    }
+    .bf-badge {
+      display: inline-block;
+      background: #F5E6D3;
+      color: #6B0F1A;
+      font-size: 9px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-family: sans-serif;
+      margin-bottom: 4px;
+    }
+    .service-card-bf .service-name { color: #FDF6EE; }
+    .service-card-bf .service-desc { color: #F2DFC9; opacity: 0.95; }
+    .service-card-bf .price-strike {
+      color: #F2DFC9;
+      text-decoration: line-through;
+      text-decoration-color: #D4AF37;
+      text-decoration-thickness: 1.5px;
+      font-size: 11px;
+    }
+    .service-card-bf .service-price { color: #FFFFFF; font-size: 16px; }
+    .bf-dates {
+      display: inline-block;
+      margin-top: 5px;
+      font-size: 9px;
+      font-family: sans-serif;
+      letter-spacing: 0.5px;
+      padding: 2px 7px;
+      border: 1px solid rgba(245, 230, 211, 0.55);
+      border-radius: 12px;
+      color: #F5E6D3;
+    }
+
     .service-info { flex: 1; padding-right: 10px; }
     .service-name { font-size: 13px; font-weight: bold; }
     .service-desc { font-size: 10px; color: #7A8B9E; margin-top: 3px; font-family: sans-serif; }
     
-    .price-container { text-align: right; white-space: nowrap; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center;}
+    .price-container { text-align: right; white-space: nowrap; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
     .service-price { font-size: 14px; font-weight: bold; color: #B89047; }
     .price-strike { font-size: 10px; color: #9CA3AF; text-decoration: line-through; margin-bottom: 2px; }
 
@@ -147,6 +201,20 @@
       
       <!-- 1. SELECCIONA EL SERVICIO -->
       <div class="section-title">1. Selecciona el Servicio</div>
+
+      <!-- TARJETA BLACK FRIDAY (ACTIVA DEL 21/11 00:00 AL 30/11 00:00 HORA PENINSULAR) -->
+      <div class="service-card service-card-bf" id="card-servicio-bf" onclick="seleccionarServicio('bf', 29)">
+        <div class="service-info">
+          <div class="bf-badge">BLACK FRIDAY • 15% DE DESCUENTO</div>
+          <div class="service-name">Primera Sesión — Oferta Black Friday</div>
+          <div class="service-desc">50 min • Quiromasaje descontracturante con 15% de descuento en tu 1ª sesión.</div>
+          <div class="bf-dates">DISPONIBLE DEL 20 AL 30 NOV.</div>
+        </div>
+        <div class="price-container">
+          <div class="price-strike">35 €</div>
+          <div class="service-price">29 €</div>
+        </div>
+      </div>
 
       <div class="service-card" id="card-servicio-1" onclick="seleccionarServicio(1, 35)">
         <div class="service-info">
@@ -274,6 +342,30 @@
     let ultimoTelefonoVerificado = "";
     let clientesMemoria = [];
 
+    // CONTROL AUTOMÁTICO OFERTA BLACK FRIDAY (HORA PENINSULAR ESPAÑOLA CET = UTC+1)
+    const BF_INICIO = new Date('2026-11-21T00:00:00+01:00');
+    const BF_FIN = new Date('2026-11-30T00:00:00+01:00');
+
+    function esBlackFridayActivo() {
+      const ahora = new Date();
+      return ahora >= BF_INICIO && ahora < BF_FIN;
+    }
+
+    function actualizarVisibilidadBlackFriday() {
+      const cardBF = document.getElementById('card-servicio-bf');
+      if (!cardBF) return;
+
+      if (esBlackFridayActivo()) {
+        cardBF.style.display = 'flex';
+      } else {
+        cardBF.style.display = 'none';
+        if (document.getElementById('servicio_id').value === 'bf') {
+          cardBF.classList.remove('selected');
+          document.getElementById('servicio_id').value = '';
+        }
+      }
+    }
+
     // FUNCIÓN INTELIGENTE DE HORARIOS: Cambia automáticamente a partir de Octubre
     function obtenerHorarios(fechaStr) {
       if (!fechaStr) return ['09:00', '10:00', '11:00', '12:00', '13:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
@@ -284,7 +376,6 @@
       const anio = parseInt(partes[0], 10);
       const mes = parseInt(partes[1], 10);
 
-      // Si el año es posterior a 2026 O si es 2026 y el mes es Octubre (10) o posterior
       if (anio > 2026 || (anio === 2026 && mes >= 10)) {
         return ['09:30', '10:30', '11:30', '12:30', '16:00', '17:00', '18:00', '19:00', '20:00'];
       } else {
@@ -564,6 +655,12 @@
         mostrarAlertaWeb("Atención", "Por favor, selecciona un servicio antes de confirmar tu cita.", "⚠️", false);
         return;
       }
+      if (servicioId === 'bf' && !esBlackFridayActivo()) {
+        actualizarVisibilidadBlackFriday();
+        mostrarAlertaWeb("Oferta Finalizada", "La promoción de Black Friday ya no está disponible. Por favor, selecciona otro servicio.", "⚠️", false);
+        return;
+      }
+
       const horaVal = document.getElementById('hora').value;
       if (!horaVal) {
         mostrarAlertaWeb("Atención", "Por favor, selecciona una hora disponible en el calendario.", "⚠️", false);
@@ -621,8 +718,18 @@
           await supabase.from('bonos').update({ sesiones_restantes: bono.sesiones_restantes - 1 }).eq('id', bono.id);
         }
 
-        const estadoCita = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 'bono' : 'pendiente';
-        const targetServicioId = (servicioId === '2' || servicioId === '5' || servicioId === '3') ? 2 : 1;
+        let estadoCita = 'pendiente';
+        let targetServicioId = 1;
+        let notaFinal = nota;
+
+        if (servicioId === 'bf') {
+          estadoCita = 'blackfriday';
+          targetServicioId = 1;
+          notaFinal = nota ? `[PRECIO:29] [BLACKFRIDAY] ${nota}` : '[PRECIO:29] [BLACKFRIDAY]';
+        } else if (servicioId === '2' || servicioId === '5' || servicioId === '3') {
+          estadoCita = 'bono';
+          targetServicioId = 2;
+        }
 
         const { error } = await supabase.from('citas').insert([{
           cliente_nombre: nombre,
@@ -631,14 +738,18 @@
           hora: horaVal,
           servicio_id: targetServicioId,
           estado: estadoCita,
-          nota: nota
+          nota: notaFinal
         }]);
 
         if (error) throw error;
 
+        const mensajeAvisoAdmin = (servicioId === 'bf')
+          ? `🏷️ Nueva reserva BLACK FRIDAY (1ª Sesión - 29€) de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${horaVal} h.`
+          : `Nueva reserva de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${horaVal} h.`;
+
         await supabase.from('avisos_admin').insert([{
           tipo: 'nueva',
-          mensaje: `Nueva reserva de ${nombre} para el ${formatearFechaEspanol(fecha)} a las ${horaVal} h.`
+          mensaje: mensajeAvisoAdmin
         }]);
 
         mostrarAlertaWeb(
@@ -764,6 +875,9 @@
     }
 
     window.onload = () => {
+      actualizarVisibilidadBlackFriday();
+      setInterval(actualizarVisibilidadBlackFriday, 30000);
+
       const urlParams = new URLSearchParams(window.location.search);
       const fechaParam = urlParams.get('fecha');
       const nombreParam = urlParams.get('nombre');
