@@ -184,6 +184,41 @@
     .modal-icon { font-size: 38px; margin-bottom: 6px; }
     .modal-title { font-size: 18px; font-weight: bold; color: #0B1E36; margin-bottom: 8px; font-family: 'Georgia', serif; }
     .modal-text { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.4; }
+
+    /* TEMA BURDEOS Y ANIMACIÓN PARA AVISO BLACK FRIDAY */
+    @keyframes bfEntradaSuave {
+      0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .modal-content-bf {
+      background: linear-gradient(145deg, #6B0F1A 0%, #861624 100%);
+      border: 2px solid #B89047;
+      color: #FDF6EE;
+      box-shadow: 0 14px 36px rgba(107, 15, 26, 0.45);
+      animation: bfEntradaSuave 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .modal-content-bf .modal-title {
+      color: #FDF6EE;
+    }
+    .modal-content-bf .modal-text {
+      color: #F5E6D3;
+    }
+    .modal-content-bf .btn-confirm {
+      background-color: #F5E6D3;
+      color: #6B0F1A;
+      transition: transform 0.15s ease, background-color 0.2s ease;
+    }
+    .modal-content-bf .btn-confirm:hover {
+      background-color: #FFFFFF;
+      transform: scale(1.02);
+    }
+
     .cal-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-weight: bold; font-size: 12px; text-decoration: none; text-align: center; }
     .cal-google { background: #1A73E8; color: #FFF; }
     .cal-apple { background: #0B1E36; color: #FFF; border: 1px solid #B89047; }
@@ -312,7 +347,7 @@
 
   <!-- MODAL INTERNO DE LA WEB -->
   <div class="modal" id="modal-alerta-web">
-    <div class="modal-content">
+    <div class="modal-content" id="modal-alerta-caja">
       <div class="modal-icon" id="modal-alerta-icono">⚠️</div>
       <div class="modal-title" id="modal-alerta-titulo">Aviso</div>
       <div class="modal-text" id="modal-alerta-texto">Mensaje...</div>
@@ -374,7 +409,12 @@
           "✨ Oferta Black Friday Activa",
           "Si vienes a disfrutar de tu Primera Sesión con el 15% de descuento (29 € en lugar de 35 €), recuerda pulsar sobre el botón burdeos «Primera Sesión — Oferta Black Friday» antes de confirmar tu cita. Cierra esta ventana para continuar.",
           "🏷️",
-          false
+          false,
+          "",
+          "",
+          "",
+          false,
+          true
         );
       }
     }
@@ -402,7 +442,14 @@
       return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fechaStr;
     }
 
-    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false) {
+    function mostrarAlertaWeb(titulo, texto, icono = "⚠️", mostrarCalendarios = false, fechaCita = "", horaCita = "", nombreCliente = "", mostrarInputTel = false, estiloBurdeosBF = false) {
+      const cajaModal = document.getElementById('modal-alerta-caja');
+      if (estiloBurdeosBF) {
+        cajaModal.classList.add('modal-content-bf');
+      } else {
+        cajaModal.classList.remove('modal-content-bf');
+      }
+
       document.getElementById('modal-alerta-titulo').innerText = titulo;
       document.getElementById('modal-alerta-texto').innerText = texto;
       document.getElementById('modal-alerta-icono').innerText = icono;
@@ -449,6 +496,7 @@
 
     function cerrarModalAlertaWeb() {
       document.getElementById('modal-alerta-web').style.display = 'none';
+      document.getElementById('modal-alerta-caja').classList.remove('modal-content-bf');
     }
 
     function seleccionarServicio(id, precio) {
